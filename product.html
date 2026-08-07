@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Chi tiết sản phẩm | Kho Tài Khoản</title>
+
+    <meta
+        name="description"
+        content="Thông tin chi tiết sản phẩm"
+    >
+
+    <!-- FONT -->
+    <link
+        rel="preconnect"
+        href="https://fonts.googleapis.com"
+    >
+
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin
+    >
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- ICON -->
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    >
+
+    <!-- COMMON UI -->
+    <link
+        rel="stylesheet"
+        href="css/style.css"
+    >
+
+    <!-- PRODUCT PAGE -->
+    <link
+        rel="stylesheet"
+        href="css/product.css"
+    >
+</head>
+
+
+<body class="product-page">
+
+
+    <!-- =====================================================
+         LEFT SIDEBAR
+    ====================================================== -->
+
+    <aside class="left-rail">
+
+        <button
+            class="rail-primary"
+            id="railMenuButton"
+            type="button"
+        >
+            <i class="bi bi-list"></i>
+        </button>
+
+
+        <nav class="rail-nav">
+
+            <a
+                href="index.html#ai-products"
+                class="rail-link"
+            >
+                <span class="rail-ai">
+                    Ai
+                </span>
+            </a>
+
+
+            <a
+                href="index.html#education"
+                class="rail-link"
+            >
+                <i class="bi bi-mortarboard-fill"></i>
+            </a>
+
+
+            <a
+                href="#"
+                class="rail-link"
+            >
+                <i class="bi bi-laptop"></i>
+            </a>
+
+
+            <a
+                href="#"
+                class="rail-link"
+            >
+                <i class="bi bi-headphones"></i>
+            </a>
+
+
+            <a
+                href="#"
+                class="rail-link"
+            >
+                <i class="bi bi-shield-lock-fill"></i>
+            </a>
+
+
+            <a
+                href="#"
+                class="rail-link"
+            >
+                <i class="bi bi-controller"></i>
+            </a>
+
+
+            <a
+                href="#"
+                class="rail-link"
+            >
+                <i class="bi bi-window-desktop"></i>
+            </a>
+
+
+            <a
+                href="#"
+                class="rail-link"
+            >
+                <i class="bi bi-gear-fill"></i>
+            </a>
+
+        </nav>
+
+    </aside>
+
+
+    <!-- =====================================================
+         CATEGORY DRAWER
+    ====================================================== -->
+
+    <div
+        class="category-backdrop"
+        id="categoryBackdrop"
+    ></div>
+
+
+    <aside
+        class="category-drawer"
+        id="categoryDrawer"
+    >
+
+        <div class="drawer-header">
+
+            <strong>
+                Tất cả danh mục
+            </strong>
+
+            <button
+                id="closeDrawer"
+                type="button"
+            >
+                <i class="bi bi-x-lg"></i>
+            </button>
+
+        </div>
+
+
+        <nav class="drawer-menu">
+
+            <a href="index.html#ai-products">
+
+                <i class="bi bi-stars"></i>
+
+                <span>
+                    Công cụ AI
+                </span>
+
+                <i class="bi bi-chevron-right"></i>
+
+            </a>
+
+
+            <a href="index.html#education">
+
+                <i class="bi bi-mortarboard"></i>
+
+                <span>
+                    Tài khoản Học tập
+                </span>
+
+                <i class="bi bi-chevron-right"></i>
+
+            </a>
+
+
+            <a href="#">
+
+                <i class="bi bi-briefcase"></i>
+
+                <span>
+                    Tài khoản Làm việc
+                </span>
+
+                <i class="bi bi-chevron-right"></i>
+
+            </a>
+
+
+            <a href="#">
+
+                <i class="bi bi-film"></i>
+
+                <span>
+                    Tài khoản Giải trí
+                </span>
+
+                <i class="bi bi-chevron-right"></i>
+
+            </a>
+
+
+            <a href="#">
+
+                <i class="bi bi-shield-lock"></i>
+
+                <span>
+                    VPN
+                </span>
+
+                <i class="bi bi-chevron-right"></i>
+
+            </a>
+
+
+            <a href="#">
+
+                <i class="bi bi-cloud"></i>
+
+                <span>
+                    Lưu trữ
+                </span>
+
+                <i class="bi bi-chevron-right"></i>
+
+            </a>
+
+        </nav>
+
+    </aside>
+
+
+    <!-- =====================================================
+         PAGE
+    ====================================================== -->
+
+    <div class="page-shell">
+
+
+        <!-- =================================================
+             HEADER
+        ================================================== -->
+
+        <header class="site-header">
+
+            <div class="header-top">
+
+                <div class="container header-top-inner">
+
+
+                    <button
+                        class="mobile-menu-button"
+                        id="mobileMenuButton"
+                        type="button"
+                    >
+                        <i class="bi bi-list"></i>
+                    </button>
+
+
+                    <a
+                        href="index.html"
+                        class="brand-logo"
+                    >
+                        <img
+                            src="https://khotaikhoan.net/wp-content/uploads/2025/02/Logo-kho-tai-khoan-moi.png.webp"
+                            alt="Kho Tài Khoản"
+                        >
+                    </a>
+
+
+                    <form
+                        class="search-box"
+                        id="globalSearchForm"
+                    >
+
+                        <button
+                            class="search-submit"
+                            type="submit"
+                        >
+                            <i class="bi bi-search"></i>
+                        </button>
+
+
+                        <input
+                            type="search"
+                            placeholder="Tìm sản phẩm ..."
+                        >
+
+                    </form>
+
+
+                    <a
+                        href="#"
+                        class="top-contact"
+                    >
+
+                        <span class="zalo-word">
+                            Zalo
+                        </span>
+
+                        <strong>
+                            0865 890 208
+                        </strong>
+
+                    </a>
+
+
+                    <button
+                        class="mobile-user"
+                        type="button"
+                    >
+                        <i class="bi bi-person"></i>
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <div class="header-nav">
+
+                <div class="container header-nav-inner">
+
+
+                    <nav class="desktop-nav">
+
+
+                        <button
+                            class="category-button"
+                            id="categoryButton"
+                            type="button"
+                        >
+
+                            <span class="category-circle">
+                                <i class="bi bi-list"></i>
+                            </span>
+
+                            Tất cả danh mục
+
+                        </button>
+
+
+                        <a href="index.html#commitments">
+
+                            <span class="nav-mini-icon">
+                                <i class="bi bi-info-circle-fill"></i>
+                            </span>
+
+                            Giới Thiệu
+
+                        </a>
+
+
+                        <a href="index.html#buy-process">
+
+                            <span class="nav-mini-icon">
+                                <i class="bi bi-bag-check-fill"></i>
+                            </span>
+
+                            Hướng dẫn mua hàng
+
+                        </a>
+
+
+                        <a href="#">
+
+                            <span class="nav-mini-icon">
+                                <i class="bi bi-newspaper"></i>
+                            </span>
+
+                            Blog tin tức
+
+                        </a>
+
+                    </nav>
+
+
+                    <div class="header-actions">
+
+
+                        <button
+                            class="header-action"
+                            type="button"
+                        >
+                            <i class="bi bi-person"></i>
+                        </button>
+
+
+                        <button
+                            class="header-action"
+                            type="button"
+                        >
+
+                            <i class="bi bi-heart"></i>
+
+                            <span class="action-counter">
+                                0
+                            </span>
+
+                        </button>
+
+
+                        <button
+                            class="header-action cart-action"
+                            type="button"
+                        >
+
+                            <i class="bi bi-cart3"></i>
+
+                            <span class="action-counter">
+                                0
+                            </span>
+
+                        </button>
+
+
+                        <span class="cart-price">
+                            0₫
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </header>
+
+
+        <!-- =================================================
+             MAIN
+        ================================================== -->
+
+        <main class="product-main">
+
+
+            <!-- =================================================
+                 BREADCRUMB
+            ================================================== -->
+
+            <div class="container">
+
+                <nav
+                    class="product-breadcrumb"
+                    id="breadcrumbs"
+                ></nav>
+
+            </div>
+
+
+            <!-- =================================================
+                 PRODUCT TOP
+            ================================================== -->
+
+            <section class="container product-top-section">
+
+                <div class="product-main-grid">
+
+
+                    <!-- =========================================
+                         IMAGE
+                    ========================================== -->
+
+                    <div class="product-media-column">
+
+                        <div class="product-main-image-box">
+
+
+                            <span
+                                class="main-discount-badge"
+                                id="mainDiscount"
+                            ></span>
+
+
+                            <img
+                                id="productImage"
+                                src=""
+                                alt=""
+                            >
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- =========================================
+                         INFO
+                    ========================================== -->
+
+                    <div class="product-summary-column">
+
+
+                        <h1
+                            class="product-page-title"
+                            id="productName"
+                        >
+                            Đang tải...
+                        </h1>
+
+
+                        <!-- RATING -->
+
+                        <div class="product-rating-row">
+
+
+                            <span class="summary-stars">
+                                ★★★★★
+                            </span>
+
+
+                            <strong id="productRating">
+                                -
+                            </strong>
+
+
+                            <a
+                                href="#reviews"
+                                id="reviewCount"
+                            >
+                                -
+                            </a>
+
+
+                            <span class="rating-divider">
+                                ·
+                            </span>
+
+
+                            <span id="soldCount">
+                                -
+                            </span>
+
+
+                            <span
+                                class="high-rating-pill"
+                                id="highRatingBadge"
+                            >
+                                Được đánh giá cao
+                            </span>
+
+                        </div>
+
+
+                        <!-- SOCIAL PROOF -->
+
+                        <div
+                            class="recent-sale-card"
+                            id="recentSaleCard"
+                        >
+
+                            <span class="recent-avatar">
+                                U
+                            </span>
+
+
+                            <span>
+
+                                <strong id="recentBuyer">
+                                    Uyên
+                                </strong>
+
+                                vừa đặt hàng thành công ·
+
+                                <span id="recentTime">
+                                    2 phút trước
+                                </span>
+
+                            </span>
+
+                        </div>
+
+
+                        <!-- PRICE -->
+
+                        <div class="summary-price-box">
+
+
+                            <del id="oldPrice">
+                                -
+                            </del>
+
+
+                            <strong id="currentPrice">
+                                -
+                            </strong>
+
+                        </div>
+
+
+                        <!-- DEAL -->
+
+                        <div
+                            class="product-deal-box"
+                            id="productDealBox"
+                        >
+
+                            <div class="deal-top">
+
+
+                                <span class="deal-label">
+                                    ƯU ĐÃI ĐANG ÁP DỤNG
+                                </span>
+
+
+                                <div class="deal-countdown">
+
+
+                                    <span class="countdown-title">
+                                        KẾT THÚC SAU:
+                                    </span>
+
+
+                                    <div class="countdown-blocks">
+
+
+                                        <span>
+                                            <b id="dealDays">
+                                                00
+                                            </b>
+                                            <small>NGÀY</small>
+                                        </span>
+
+
+                                        <span>
+                                            <b id="dealHours">
+                                                00
+                                            </b>
+                                            <small>GIỜ</small>
+                                        </span>
+
+
+                                        <span>
+                                            <b id="dealMinutes">
+                                                00
+                                            </b>
+                                            <small>PHÚT</small>
+                                        </span>
+
+
+                                        <span>
+                                            <b id="dealSeconds">
+                                                00
+                                            </b>
+                                            <small>GIÂY</small>
+                                        </span>
+
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <div class="deal-progress">
+
+                                <span
+                                    class="deal-progress-fill"
+                                    id="dealProgressFill"
+                                ></span>
+
+                            </div>
+
+
+                            <div class="deal-bottom">
+
+                                <strong id="dealSoldText">
+                                    Đã bán 30%
+                                </strong>
+
+                                <strong id="dealRemaining">
+                                    Còn 626
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- =====================================
+                             VARIANTS
+                        ====================================== -->
+
+                        <div
+                            class="purchase-option-section"
+                            id="variantSection"
+                        >
+
+                            <h3 id="variantTitle">
+                                Loại gói:
+                            </h3>
+
+
+                            <div
+                                class="option-button-list"
+                                id="variantOptions"
+                            ></div>
+
+                        </div>
+
+
+                        <!-- =====================================
+                             DURATIONS
+                        ====================================== -->
+
+                        <div
+                            class="purchase-option-section"
+                            id="durationSection"
+                        >
+
+                            <h3>
+                                Thời hạn:
+                            </h3>
+
+
+                            <div
+                                class="option-button-list"
+                                id="durationOptions"
+                            ></div>
+
+                        </div>
+
+
+                        <button
+                            class="reset-options-button"
+                            id="resetOptions"
+                            type="button"
+                        >
+                            × &nbsp; Xóa
+                        </button>
+
+
+                        <!-- =====================================
+                             CART
+                        ====================================== -->
+
+                        <div class="purchase-actions">
+
+
+                            <div class="quantity-control">
+
+                                <button
+                                    id="qtyMinus"
+                                    type="button"
+                                >
+                                    -
+                                </button>
+
+                                <span id="quantity">
+                                    1
+                                </span>
+
+                                <button
+                                    id="qtyPlus"
+                                    type="button"
+                                >
+                                    +
+                                </button>
+
+                            </div>
+
+
+                            <button
+                                class="add-cart-button"
+                                id="addCartButton"
+                                type="button"
+                            >
+                                Thêm Vào Giỏ Hàng
+                            </button>
+
+
+                            <button
+                                class="buy-now-button"
+                                id="buyNowButton"
+                                type="button"
+                            >
+                                Mua Ngay
+                            </button>
+
+                        </div>
+
+
+                        <!-- =====================================
+                             BENEFITS
+                        ====================================== -->
+
+                        <div
+                            class="purchase-benefits"
+                            id="purchaseBenefits"
+                        ></div>
+
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- =================================================
+                 PURCHASE NOTICE
+            ================================================== -->
+
+            <section class="container">
+
+                <div
+                    class="purchase-notice"
+                    id="purchaseNotice"
+                >
+
+                    <h2>
+
+                        <i class="bi bi-exclamation-triangle"></i>
+
+                        LƯU Ý KHI MUA SẢN PHẨM
+
+                    </h2>
+
+
+                    <div id="noticeItems"></div>
+
+                </div>
+
+            </section>
+
+
+            <!-- =================================================
+                 PRODUCT CONTENT
+            ================================================== -->
+
+            <section class="product-content-section">
+
+                <div class="container">
+
+                    <article class="product-long-content">
+
+
+                        <!-- INTRO -->
+
+                        <div
+                            class="product-intro"
+                            id="productIntro"
+                        ></div>
+
+
+                        <!-- TOC -->
+
+                        <div class="quick-content">
+
+
+                            <button
+                                class="quick-content-header"
+                                id="tocToggle"
+                                type="button"
+                            >
+
+                                <span>
+
+                                    <i class="bi bi-list-task"></i>
+
+                                    Xem nhanh nội dung
+
+                                </span>
+
+
+                                <i
+                                    class="bi bi-chevron-right"
+                                    id="tocArrow"
+                                ></i>
+
+                            </button>
+
+
+                            <nav
+                                class="quick-content-body"
+                                id="tocBody"
+                            ></nav>
+
+                        </div>
+
+
+                        <!-- DYNAMIC ARTICLE -->
+
+                        <div
+                            class="dynamic-product-content"
+                            id="dynamicProductContent"
+                        ></div>
+
+
+                        <!-- FAQ -->
+
+                        <section
+                            class="faq-section"
+                            id="faqSection"
+                        >
+
+                            <h2 class="content-heading">
+                                Câu hỏi thường gặp (FAQ)
+                            </h2>
+
+
+                            <div id="faqContent"></div>
+
+                        </section>
+
+
+                        <div
+                            class="updated-badge"
+                            id="updatedBadge"
+                        ></div>
+
+
+                    </article>
+
+
+                    <!-- =========================================
+                         RELATED PRODUCTS
+                    ========================================== -->
+
+                    <section class="related-products-section">
+
+                        <h2>
+                            Sản phẩm liên quan
+                        </h2>
+
+
+                        <div
+                            class="related-product-grid"
+                            id="relatedProducts"
+                        ></div>
+
+                    </section>
+
+
+                    <!-- =========================================
+                         REVIEWS
+                    ========================================== -->
+
+                    <section
+                        class="product-reviews-section"
+                        id="reviews"
+                    >
+
+
+                        <header class="review-section-heading">
+
+                            <h2>
+                                Đánh giá sản phẩm
+                            </h2>
+
+                            <p>
+                                Góc nhìn thật từ khách hàng và phản hồi từ shop.
+                            </p>
+
+                        </header>
+
+
+                        <!-- SUMMARY -->
+
+                        <div class="review-summary-card">
+
+
+                            <div class="review-average">
+
+                                <strong id="reviewAverage">
+                                    4.6
+                                </strong>
+
+                                <div class="review-average-stars">
+                                    ★★★★★
+                                </div>
+
+                                <span id="reviewTotalLabel">
+                                    0 nhận xét
+                                </span>
+
+                            </div>
+
+
+                            <div class="review-summary-stats">
+
+
+                                <div>
+
+                                    <strong id="satisfactionRate">
+                                        96%
+                                    </strong>
+
+                                    <span>
+                                        khách hài lòng
+                                    </span>
+
+                                </div>
+
+
+                                <div>
+
+                                    <strong id="summarySold">
+                                        0
+                                    </strong>
+
+                                    <span>
+                                        đã bán
+                                    </span>
+
+                                </div>
+
+
+                                <div>
+
+                                    <strong>
+                                        Shop
+                                    </strong>
+
+                                    <span>
+                                        có phản hồi
+                                    </span>
+
+                                </div>
+
+
+                            </div>
+
+
+                            <div
+                                class="rating-distribution"
+                                id="ratingDistribution"
+                            ></div>
+
+
+                        </div>
+
+
+                        <!-- MENTIONS -->
+
+                        <div class="review-mentions">
+
+                            <strong>
+
+                                <span class="orange-dot"></span>
+
+                                KHÁCH HAY NHẮC ĐẾN
+
+                            </strong>
+
+
+                            <div
+                                id="reviewMentionTags"
+                            ></div>
+
+                        </div>
+
+
+                        <!-- FILTER -->
+
+                        <div class="review-filter-card">
+
+
+                            <div
+                                class="review-filter-buttons"
+                                id="reviewFilterButtons"
+                            ></div>
+
+
+                            <div class="review-sort-row">
+
+                                <span>
+                                    Sắp xếp
+                                </span>
+
+                                <select id="reviewSort">
+
+                                    <option value="newest">
+                                        Mới nhất
+                                    </option>
+
+                                    <option value="highest">
+                                        Đánh giá cao nhất
+                                    </option>
+
+                                    <option value="lowest">
+                                        Đánh giá thấp nhất
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- LIST -->
+
+                        <div
+                            class="review-list"
+                            id="reviewList"
+                        ></div>
+
+
+                        <!-- PAGINATION -->
+
+                        <div
+                            class="review-pagination"
+                            id="reviewPagination"
+                        ></div>
+
+
+                    </section>
+
+                </div>
+
+            </section>
+
+
+        </main>
+
+
+        <!-- =================================================
+             FOOTER
+        ================================================== -->
+
+        <footer
+            class="site-footer product-footer"
+            id="footer"
+        >
+
+            <div class="container">
+
+                <div class="footer-grid">
+
+
+                    <div class="footer-brand">
+
+                        <a
+                            href="index.html"
+                            class="footer-logo"
+                        >
+
+                            <img
+                                src="https://khotaikhoan.net/wp-content/uploads/2025/02/Logo-kho-tai-khoan-moi.png.webp"
+                                alt="Kho Tài Khoản"
+                            >
+
+                        </a>
+
+
+                        <p>
+                            Kho Tài Khoản là đơn vị cung cấp tài khoản,
+                            phần mềm bản quyền chính hãng với giá thành tốt nhất.
+                        </p>
+
+
+                        <p>
+
+                            <strong>
+                                Giờ làm việc:
+                            </strong>
+
+                            08:00 - 22:00,
+
+                            <strong>
+                                phục vụ tất cả các ngày
+                            </strong>
+
+                            (kể cả Lễ & Tết).
+
+                        </p>
+
+
+                        <h4>
+                            Theo dõi chúng tôi
+                        </h4>
+
+
+                        <div class="social-icons">
+
+                            <a href="#">
+                                <i class="bi bi-facebook"></i>
+                            </a>
+
+                            <a href="#">
+                                <i class="bi bi-twitter-x"></i>
+                            </a>
+
+                            <a href="#">
+                                <i class="bi bi-instagram"></i>
+                            </a>
+
+                            <a href="#">
+                                <i class="bi bi-youtube"></i>
+                            </a>
+
+                            <a href="#">
+                                <i class="bi bi-pinterest"></i>
+                            </a>
+
+                            <a href="#">
+                                <i class="bi bi-tiktok"></i>
+                            </a>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="footer-column">
+
+                        <h3>
+                            Giới thiệu
+                        </h3>
+
+                        <a href="#">
+                            Về Kho Tài Khoản
+                        </a>
+
+                        <a href="#">
+                            Điều khoản dịch vụ
+                        </a>
+
+                        <a href="#">
+                            Chính sách bảo mật
+                        </a>
+
+                        <a href="#">
+                            Chính sách Cookies
+                        </a>
+
+                        <a href="#">
+                            Bảo hành và hoàn tiền
+                        </a>
+
+                        <a href="#">
+                            Hình thức thanh toán
+                        </a>
+
+                    </div>
+
+
+                    <div class="footer-column">
+
+                        <h3>
+                            Kênh liên hệ & Hỗ trợ
+                        </h3>
+
+                        <a href="#">
+                            Facebook: Kho Tài Khoản
+                        </a>
+
+                        <a href="#">
+                            Zalo 1: 0865 890 208
+                        </a>
+
+                        <a href="#">
+                            Zalo 2: 0856 220 037
+                        </a>
+
+                        <a href="#">
+                            Hotline 1: 0865 890 208
+                        </a>
+
+                        <a href="#">
+                            Hotline 2: 0856 220 037
+                        </a>
+
+                        <a href="#">
+                            Email: Support@khotaikhoan.net
+                        </a>
+
+                    </div>
+
+
+                    <div class="footer-column">
+
+                        <h3>
+                            Danh mục chính
+                        </h3>
+
+                        <a href="index.html#ai-products">
+                            Công cụ AI
+                        </a>
+
+                        <a href="#">
+                            Tài khoản Làm việc
+                        </a>
+
+                        <a href="#">
+                            Tài khoản Giải trí
+                        </a>
+
+                        <a href="index.html#education">
+                            Tài khoản Học tập
+                        </a>
+
+                        <a href="#">
+                            Tài khoản Lưu trữ
+                        </a>
+
+                        <a href="#">
+                            Tài khoản VPN
+                        </a>
+
+                        <a href="#">
+                            Anti Virus
+                        </a>
+
+                        <a href="#">
+                            Ứng dụng & Phần mềm khác
+                        </a>
+
+                    </div>
+
+                </div>
+
+
+                <div class="footer-bottom">
+
+                    <p>
+                        Copyright © 2024
+                        <strong>Kho Tài Khoản.</strong>
+                        All rights reserved.
+                    </p>
+
+
+                    <span class="dmca-badge">
+                        <b>DMCA</b>
+                        PROTECTED
+                    </span>
+
+                </div>
+
+            </div>
+
+        </footer>
+
+    </div>
+
+
+    <!-- =====================================================
+         FLOATING CONTACT
+    ====================================================== -->
+
+    <div class="floating-contact">
+
+        <a
+            href="#"
+            class="contact-circle zalo-circle"
+        >
+            Zalo
+        </a>
+
+
+        <a
+            href="#"
+            class="contact-circle telegram-circle"
+        >
+            <i class="bi bi-send-fill"></i>
+        </a>
+
+    </div>
+
+
+    <!-- =====================================================
+         STICKY BUY BAR
+    ====================================================== -->
+
+    <div
+        class="product-sticky-bar"
+        id="productStickyBar"
+    >
+
+        <div class="container sticky-product-inner">
+
+
+            <div class="sticky-product-info">
+
+
+                <img
+                    id="stickyProductImage"
+                    src=""
+                    alt=""
+                >
+
+
+                <div>
+
+                    <strong id="stickyProductName">
+                        Sản phẩm
+                    </strong>
+
+
+                    <span class="sticky-stars">
+                        ★★★★★
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="sticky-product-right">
+
+
+                <div class="sticky-price-wrap">
+
+                    <strong id="stickyPrice">
+                        -
+                    </strong>
+
+                    <del id="stickyOldPrice">
+                        -
+                    </del>
+
+                    <span
+                        class="sticky-save-badge"
+                        id="stickySaveBadge"
+                    ></span>
+
+                </div>
+
+
+                <button
+                    class="sticky-select-button"
+                    id="stickySelectButton"
+                    type="button"
+                >
+                    Lựa Chọn
+                </button>
+
+
+                <button
+                    class="sticky-buy-button"
+                    id="stickyBuyButton"
+                    type="button"
+                >
+                    Mua Ngay
+                </button>
+
+
+                <button
+                    class="sticky-heart"
+                    type="button"
+                >
+                    <i class="bi bi-heart"></i>
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         JS
+    ====================================================== -->
+
+    <script src="js/products.js"></script>
+    <script src="js/product-page.js"></script>
+
+</body>
+
+</html>
