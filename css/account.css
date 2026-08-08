@@ -1,0 +1,42 @@
+:root { --blue:#2563eb; --line:#dbe5f2; --soft:#f1f6fc; --ink:#07152d; --muted:#667085; --gold:#e5b64c; }
+.account-main { padding:40px 0 0; background:#f7f7f7; }
+.account-shell { width:min(1180px,calc(100% - 72px)); margin:0 auto 0; display:grid; grid-template-columns:236px 1fr; gap:16px; padding:16px; border:1px solid var(--line); border-radius:16px; background:#eef4fa; color:var(--ink); }
+.account-side { padding:4px 0; }
+.account-side h1 { margin:0 0 14px; padding:0 16px 14px; border-bottom:1px solid #d7e0eb; font-size:21px; line-height:1.25; font-weight:500; }
+.account-side nav { display:grid; gap:8px; padding:10px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+.account-tab { border:0; border-radius:8px; padding:12px; background:transparent; color:#475569; text-align:left; font-weight:800; cursor:pointer; }
+.account-tab.active,.account-tab:hover { background:#eaf2ff; color:#07152d; }
+.account-content { min-height:380px; border:1px solid var(--line); border-radius:10px; background:#fff; box-shadow:0 12px 32px rgba(15,23,42,.08); }
+.account-panel { display:none; padding:20px; }
+.account-panel.active { display:block; }
+.notice { min-height:62px; display:flex; align-items:center; gap:14px; margin-bottom:18px; padding:14px 22px; border-radius:8px; background:var(--gold); color:#fff; font-size:13px; font-weight:800; }
+.notice a { color:#fff; font-weight:900; }
+.notice > a { margin-left:auto; padding:12px 22px; border-radius:8px; background:var(--blue); text-decoration:none; }
+.dash-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:20px; }
+.dash-grid button { min-height:94px; border:1px solid var(--line); border-radius:10px; background:#fff; font-weight:900; cursor:pointer; box-shadow:0 8px 22px rgba(15,23,42,.06); }
+.dash-grid i { display:block; margin-bottom:10px; color:var(--blue); font-size:30px; }
+.orders-head { display:flex; justify-content:space-between; gap:16px; margin-bottom:14px; }
+.order-tabs { display:flex; padding:4px; border:1px solid var(--line); border-radius:999px; background:#fff; }
+.order-tabs button { border:0; border-radius:999px; padding:10px 15px; background:transparent; font-weight:800; color:#64748b; }
+.order-tabs button.active { background:var(--blue); color:#fff; }
+.order-tabs span { margin-left:4px; padding:1px 7px; border-radius:999px; background:#eef4ff; color:#64748b; }
+#orderSearch { display:flex; overflow:hidden; border:1px solid var(--line); border-radius:999px; background:#fff; }
+#orderSearch input { border:0; padding:0 16px; outline:0; }
+#orderSearch button { border:0; padding:0 22px; background:var(--blue); color:#fff; font-weight:900; }
+.profile-form { display:grid; grid-template-columns:1fr 1fr; gap:18px 24px; max-width:868px; }
+.profile-form label { display:grid; gap:8px; font-weight:800; }
+.profile-form input { height:42px; border:1px solid var(--line); border-radius:10px; padding:0 12px; font:inherit; }
+.profile-form small { color:#8a97ad; font-weight:500; }
+.wide { grid-column:1 / -1; }
+fieldset.wide { display:grid; gap:16px; margin:12px 0; padding:22px 18px; border:1px solid var(--line); border-radius:10px; background:#f8fafc; }
+.profile-form legend { padding:0 10px; font-weight:900; }
+.profile-form button { width:max-content; border:0; border-radius:8px; padding:13px 20px; background:var(--blue); color:#fff; font-weight:900; cursor:pointer; }
+.wishlist-panel { min-height:580px; display:none; place-items:center; text-align:center; border-radius:0; box-shadow:none; }
+.wishlist-panel.active { display:grid; align-content:center; }
+.wishlist-panel i { color:#e5e7eb; font-size:136px; }
+.wishlist-panel h2 { margin:18px 0 8px; font-size:48px; }
+.wishlist-panel p { font-size:18px; line-height:1.6; }
+.wishlist-panel a { margin-top:12px; padding:14px 28px; border-radius:6px; background:var(--blue); color:#fff; text-decoration:none; font-weight:900; }
+.account-toast { position:fixed; right:20px; bottom:20px; padding:13px 16px; border-radius:8px; background:#111827; color:#fff; opacity:0; transform:translateY(10px); transition:.2s; }
+.account-toast.show { opacity:1; transform:translateY(0); }
+@media (max-width:800px){ .account-main{padding-top:18px}.account-shell{width:calc(100% - 24px);margin:0 auto;grid-template-columns:1fr}.dash-grid,.profile-form{grid-template-columns:1fr}.orders-head{flex-direction:column}.order-tabs{overflow:auto}.wishlist-panel h2{font-size:34px} }

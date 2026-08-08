@@ -1,0 +1,144 @@
+.register-main {
+    min-height: 496px;
+    padding: 40px 0 68px;
+    background: #f7f7f7;
+}
+
+.register-shell {
+    width: min(1180px, calc(100% - 88px));
+    margin: 0 auto;
+    padding: 16px;
+    border: 1px solid #dbe5f2;
+    border-radius: 14px;
+    background: #eef4fa;
+}
+
+.register-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 42px;
+    min-height: 345px;
+    padding: 28px 46px;
+}
+
+.register-col:first-child {
+    padding-right: 40px;
+    border-right: 1px solid #cfd8e5;
+}
+
+.register-col h1,
+.register-col h2 {
+    margin: 0 0 26px;
+    color: #07152d;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 0;
+}
+
+.register-info h2 {
+    text-align: center;
+}
+
+#registerPageForm {
+    display: grid;
+    gap: 20px;
+}
+
+#registerPageForm label {
+    display: grid;
+    gap: 9px;
+    color: #07152d;
+    font-size: 16px;
+}
+
+#registerPageForm input {
+    width: 100%;
+    height: 42px;
+    border: 1px solid #d8dee8;
+    border-radius: 5px;
+    padding: 0 12px;
+    background: #fff;
+    font: inherit;
+}
+
+#registerPageForm p,
+.register-info p {
+    margin: 0;
+    color: #07152d;
+    font-size: 17px;
+    line-height: 1.55;
+}
+
+#registerPageForm button,
+.register-info button {
+    display: inline-grid;
+    place-items: center;
+    min-width: 112px;
+    height: 42px;
+    border: 0;
+    border-radius: 8px;
+    background: #2563eb;
+    color: #fff;
+    font-weight: 900;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.register-info {
+    display: grid;
+    align-content: start;
+    justify-items: center;
+    gap: 20px;
+    padding: 12px 22px;
+    text-align: center;
+}
+
+.register-info p {
+    max-width: 470px;
+}
+
+.register-info button {
+    background: #dceaff;
+    color: #0b5cff;
+}
+
+.register-toast {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 2500;
+    padding: 13px 16px;
+    border-radius: 8px;
+    background: #111827;
+    color: #fff;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: .2s;
+}
+
+.register-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@media (max-width: 760px) {
+    .register-main {
+        padding: 20px 0 56px;
+    }
+
+    .register-shell {
+        width: calc(100% - 24px);
+    }
+
+    .register-box {
+        grid-template-columns: 1fr;
+        padding: 24px;
+    }
+
+    .register-col:first-child {
+        padding-right: 0;
+        padding-bottom: 28px;
+        border-right: 0;
+        border-bottom: 1px solid #cfd8e5;
+    }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "khotaikhoan-clone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kho Tai Khoan frontend clone with local backend and admin portal",
+  "scripts": {
+    "start": "set PORT=8020&& node server.js",
+    "dev": "set PORT=8020&& node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

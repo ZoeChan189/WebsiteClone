@@ -111,6 +111,128 @@
     color: var(--blue);
 }
 
+/* =========================================================
+   EXPANDING LEFT SIDEBAR
+========================================================= */
+
+.category-left-rail {
+    align-items: stretch;
+    overflow: hidden;
+    width: 64px;
+    padding:
+        10px
+        10px
+        0;
+    gap: 14px;
+
+    transition:
+        width 320ms cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 260ms ease;
+}
+
+.category-left-rail:hover,
+.category-left-rail.is-expanded {
+    width: 270px;
+
+    box-shadow:
+        16px 0 42px
+        rgba(17, 34, 68, 0.12);
+}
+
+.category-left-rail .rail-main-button,
+.category-left-rail .rail-item {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 14px;
+
+    padding:
+        0
+        12px;
+
+    overflow: hidden;
+    border-radius: 999px;
+
+    font-weight: 800;
+    font-size: 16px;
+    line-height: 1;
+    white-space: nowrap;
+
+    transition:
+        width 320ms cubic-bezier(0.16, 1, 0.3, 1),
+        background 180ms ease,
+        color 180ms ease,
+        box-shadow 180ms ease,
+        transform 180ms ease;
+}
+
+.category-left-rail:hover .rail-main-button,
+.category-left-rail:hover .rail-item,
+.category-left-rail.is-expanded .rail-main-button,
+.category-left-rail.is-expanded .rail-item {
+    width: 250px;
+}
+
+.category-left-rail .rail-main-button i,
+.category-left-rail .rail-item i,
+.category-left-rail .rail-item strong {
+    display: inline-grid;
+    width: 20px;
+    min-width: 20px;
+    place-items: center;
+}
+
+.category-left-rail .rail-main-button i {
+    font-size: 22px;
+}
+
+.category-left-rail .rail-item i,
+.category-left-rail .rail-item strong {
+    font-size: 17px;
+}
+
+.category-left-rail .rail-main-button::after,
+.category-left-rail .rail-item::after {
+    opacity: 0;
+    transform: translateX(-8px);
+    font-size: 16px;
+    line-height: 1;
+
+    transition:
+        opacity 180ms ease,
+        transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.category-left-rail .rail-main-button::after {
+    content: "Tất cả danh mục";
+}
+
+.category-left-rail .rail-item::after {
+    content: attr(title);
+}
+
+.category-left-rail:hover .rail-main-button::after,
+.category-left-rail:hover .rail-item::after,
+.category-left-rail.is-expanded .rail-main-button::after,
+.category-left-rail.is-expanded .rail-item::after {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .category-left-rail,
+    .category-left-rail .rail-main-button,
+    .category-left-rail .rail-item,
+    .category-left-rail .rail-main-button::after,
+    .category-left-rail .rail-item::after {
+        transition: none;
+    }
+}
+
 
 /* =========================================================
    DRAWER

@@ -23,355 +23,91 @@ function escapeHTML(value) {
 
 
 /* ==========================================================
-   PRODUCT DATA
+   PRODUCT DATA FROM BACKEND
 ========================================================== */
 
-const PRODUCTS = {
-
-    chatgpt: {
-        name: "Tài khoản ChatGPT Plus & Pro (GPT-5.6)",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/chatgpt-plus-pro-800x800.webp",
-        discount: "-73%",
-        rating: "4,6",
-        sold: "10,3k đã bán",
-        price: "147.510₫",
-        oldPrice: "499.000₫"
-    },
-
-    claude: {
-        name: "Tài khoản Claude AI Pro/Max",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/claude-ai-pro-max-800x800.webp",
-        discount: "-23%",
-        rating: "4,6",
-        sold: "9,2k đã bán",
-        price: "519.000₫",
-        oldPrice: "655.556₫"
-    },
-
-    kling: {
-        name: "Tài khoản Kling AI",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2024/12/Tai-khoan-Kling-AI-800x800.webp",
-        discount: "-23%",
-        rating: "4,6",
-        sold: "10,2k đã bán",
-        price: "249.000₫"
-    },
-
-    googleAI: {
-        name: "Tài khoản Google AI Pro",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/google-ai-pro-800x800.webp",
-        discount: "-88%",
-        rating: "4,6",
-        sold: "7,6k đã bán",
-        price: "358.901₫",
-        oldPrice: "3.349.000₫"
-    },
-
-    cursor: {
-        name: "Tài khoản Cursor AI",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/cursor-pro-800x800.webp",
-        discount: "-48%",
-        rating: "4,5",
-        sold: "1,2k đã bán",
-        price: "419.000₫"
-    },
-
-    canva: {
-        name: "Tài khoản Canva Pro",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/canva-pro-800x800.webp",
-        discount: "-75%",
-        rating: "4,6",
-        sold: "5,4k đã bán",
-        price: "189.050₫",
-        oldPrice: "479.000₫"
-    },
-
-    pia: {
-        name: "Tài Khoản Pia VPN",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/pia-vpn-800x800.webp",
-        discount: "-84%",
-        rating: "4,7",
-        sold: "1,7k đã bán",
-        price: "46.550₫",
-        oldPrice: "299.000₫"
-    },
-
-    capcut: {
-        name: "Tài khoản CapCut Pro",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2023/09/Capcut-Pro-800x800.jpg",
-        discount: "-43%",
-        rating: "4,7",
-        sold: "8,5k đã bán",
-        price: "39.000₫"
-    },
-
-    quizlet: {
-        name: "Nâng cấp tài khoản Quizlet Plus",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/quizlet-plus-800x800.webp",
-        discount: "-63%",
-        rating: "4,8",
-        sold: "756 đã bán",
-        price: "59.000₫"
-    },
-
-    lingokids: {
-        name: "Tài Khoản Lingokids",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/lingokids-800x800.webp",
-        discount: "-82%",
-        rating: "4,6",
-        sold: "8,9k đã bán",
-        price: "299.000₫"
-    },
-
-    grammarly: {
-        name: "Tài Khoản Grammarly Premium",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/grammarly-800x800.webp",
-        discount: "-93%",
-        rating: "4,6",
-        sold: "8,8k đã bán",
-        price: "79.000₫"
-    },
-
-    ejoy: {
-        name: "Tài khoản eJOY English Pro Plus",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/ejoy-english-premium-800x800.webp",
-        discount: "-46%",
-        rating: "4,7",
-        sold: "6k đã bán",
-        price: "449.100₫",
-        oldPrice: "899.000₫"
-    },
-
-    wayground: {
-        name: "Wayground Premium",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/wayground-800x800.webp",
-        discount: "-38%",
-        rating: "4,6",
-        sold: "5,5k đã bán",
-        price: "299.000₫"
-    },
-
-    quillbot: {
-        name: "Tài khoản QuillBot Premium",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/quillbot-premium-800x800.webp",
-        discount: "-54%",
-        rating: "4,6",
-        sold: "9,4k đã bán",
-        price: "224.723₫",
-        oldPrice: "419.000₫"
-    },
-
-    freepik: {
-        name: "Tài Khoản Freepik Premium",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/freepik-800x800.webp",
-        discount: "-51%",
-        rating: "4,7",
-        sold: "4,9k đã bán",
-        price: "141.550₫"
-    },
-
-    pacdora: {
-        name: "Nâng Cấp Tài Khoản Pacdora",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/pacdora.webp",
-        discount: "-56%",
-        rating: "4,6",
-        sold: "9,4k đã bán",
-        price: "244.020₫"
-    },
-
-    vecteezy: {
-        name: "Tài khoản Vecteezy",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/vecteezy.webp",
-        discount: "-58%",
-        rating: "4,6",
-        sold: "6,1k đã bán",
-        price: "159.000₫"
-    },
-
-    studocu: {
-        name: "Nâng Cấp Quizizz Super Chính Chủ",
-        image:
-            "https://khotaikhoan.net/wp-content/uploads/2026/05/studocu-800x800.webp",
-        discount: "-38%",
-        rating: "4,6",
-        sold: "5,5k đã bán",
-        price: "1.499.000₫",
-        oldPrice: "2.409.000₫"
-    }
-
+let fedProducts = [];
+let aiProducts = [];
+let bestProducts = [];
+let flashProducts = [];
+let educationProducts = {
+    language: [],
+    course: [],
+    book: [],
+    other: []
 };
 
+function formatCurrency(value) {
+    return Number(value || 0).toLocaleString("vi-VN") + "₫";
+}
 
-/* ==========================================================
-   PRODUCT COLLECTIONS
-========================================================== */
+function formatSold(value) {
+    const number = Number(value || 0);
 
-const aiProducts = [
-    PRODUCTS.chatgpt,
-    PRODUCTS.claude,
-    PRODUCTS.kling,
-    PRODUCTS.googleAI,
-    PRODUCTS.cursor,
-    PRODUCTS.canva,
-    PRODUCTS.pia,
-    PRODUCTS.capcut,
-    PRODUCTS.quillbot,
-    PRODUCTS.freepik
-];
-
-
-const bestProducts = [
-    PRODUCTS.chatgpt,
-    PRODUCTS.claude,
-    PRODUCTS.canva,
-    PRODUCTS.pia,
-    PRODUCTS.capcut,
-    PRODUCTS.kling,
-    PRODUCTS.googleAI,
-    PRODUCTS.cursor,
-    PRODUCTS.freepik,
-    PRODUCTS.quillbot
-];
-
-
-const educationProducts = {
-
-    language: [
-        PRODUCTS.quizlet,
-        PRODUCTS.lingokids,
-        PRODUCTS.grammarly,
-        PRODUCTS.ejoy,
-        PRODUCTS.wayground
-    ],
-
-    course: [
-        PRODUCTS.studocu,
-        PRODUCTS.quillbot,
-        PRODUCTS.canva,
-        PRODUCTS.freepik,
-        PRODUCTS.googleAI
-    ],
-
-    book: [
-        PRODUCTS.quillbot,
-        PRODUCTS.grammarly,
-        PRODUCTS.quizlet,
-        PRODUCTS.googleAI,
-        PRODUCTS.kling
-    ],
-
-    other: [
-        PRODUCTS.canva,
-        PRODUCTS.pacdora,
-        PRODUCTS.vecteezy,
-        PRODUCTS.freepik,
-        PRODUCTS.cursor
-    ]
-
-};
-
-
-const flashProducts = [
-
-    {
-        ...PRODUCTS.pia,
-        badge: "Giảm sâu",
-        price: "46.550₫",
-        stock: "Còn 261/300 suất",
-        stockPercent: 87
-    },
-
-    {
-        ...PRODUCTS.chatgpt,
-        badge: "Giảm sâu",
-        price: "147.510₫",
-        stock: "Còn 680/900 suất",
-        stockPercent: 75.5
-    },
-
-    {
-        ...PRODUCTS.canva,
-        badge: "Giảm sâu",
-        price: "189.050₫",
-        stock: "Còn 288/300 suất",
-        stockPercent: 96
-    },
-
-    {
-        ...PRODUCTS.googleAI,
-        badge: "Giảm sâu",
-        price: "358.901₫",
-        stock: "Còn 283/300 suất",
-        stockPercent: 94.3
-    },
-
-    {
-        ...PRODUCTS.claude,
-        badge: "Deal hot",
-        price: "519.000₫",
-        stock: "Còn 559/600 suất",
-        stockPercent: 93
-    },
-
-    {
-        ...PRODUCTS.wayground,
-        badge: "Giảm sâu",
-        price: "66.866₫",
-        stock: "Còn 296/300 suất",
-        stockPercent: 98.6
-    },
-
-    {
-        ...PRODUCTS.pacdora,
-        badge: "Deal hot",
-        price: "244.020₫",
-        stock: "Còn 298/300 suất",
-        stockPercent: 99.3
-    },
-
-    {
-        ...PRODUCTS.freepik,
-        badge: "Giảm sâu",
-        price: "141.550₫",
-        stock: "Còn 297/300 suất",
-        stockPercent: 99
-    },
-
-    {
-        ...PRODUCTS.quillbot,
-        badge: "Giảm sâu",
-        price: "224.723₫",
-        stock: "Còn 300/300 suất",
-        stockPercent: 100
-    },
-
-    {
-        ...PRODUCTS.vecteezy,
-        badge: "Giảm sâu",
-        price: "159.000₫",
-        stock: "Còn 294/300 suất",
-        stockPercent: 98
+    if (number >= 1000) {
+        return (number / 1000).toFixed(1).replace(".", ",").replace(",0", "") + "k đã bán";
     }
 
-];
+    return number + " đã bán";
+}
 
+function normalizeFeedProduct(product) {
+    return {
+        ...product,
+        soldCount: Number(product.sold || 0),
+        rating: String(product.rating || "4.6").replace(".", ","),
+        sold: typeof product.sold === "string" ? product.sold : formatSold(product.sold),
+        price: typeof product.price === "string" ? product.price : formatCurrency(product.price),
+        oldPrice: product.oldPrice ? formatCurrency(product.oldPrice) : "",
+        stock: product.stock ? "Còn " + product.stock + "/300 suất" : "Còn 300/300 suất",
+        stockPercent: Math.max(8, Math.min(100, Number(product.stock || 300) / 3)),
+        badge: product.discount ? "Giảm sâu" : "Deal hot"
+    };
+}
+
+function byCategory(slug) {
+    return fedProducts.filter(product => product.categorySlug === slug);
+}
+
+function pickProducts(list, count) {
+    return list.filter(Boolean).slice(0, count);
+}
+
+function buildProductCollections(products) {
+    fedProducts = products.map(normalizeFeedProduct);
+    aiProducts = pickProducts(byCategory("cong-cu-ai"), 12);
+    bestProducts = pickProducts([...fedProducts].sort((a, b) => b.soldCount - a.soldCount), 10);
+    flashProducts = pickProducts(fedProducts.filter(product => product.discount), 10);
+
+    if (!flashProducts.length) {
+        flashProducts = pickProducts(bestProducts, 10);
+    }
+
+    const studyProducts = byCategory("hoc-tap");
+    educationProducts = {
+        language: pickProducts(studyProducts, 5),
+        course: pickProducts([...studyProducts].reverse(), 5),
+        book: pickProducts(fedProducts.filter(product => ["hoc-tap", "lam-viec"].includes(product.categorySlug)), 5),
+        other: pickProducts(fedProducts.filter(product => product.categorySlug !== "hoc-tap"), 5)
+    };
+}
+
+async function loadProductFeed() {
+    const response = await fetch("/api/products");
+
+    if (!response.ok) {
+        throw new Error("Không tải được sản phẩm từ backend.");
+    }
+
+    buildProductCollections(await response.json());
+}
+
+function renderFedProducts() {
+    renderProducts("#flashGrid", flashProducts, { flash: true, initial: 5 });
+    renderProducts("#aiGrid", aiProducts, { initial: 5 });
+    renderProducts("#bestGrid", bestProducts, { initial: 10 });
+    renderEducation("language");
+}
 
 /* ==========================================================
    PRODUCT TEMPLATE
@@ -510,7 +246,7 @@ function productCardTemplate(product, options = {}) {
 
                 <a
                     class="product-buy-button"
-                    href="#"
+                    href="product.html?slug=${encodeURIComponent(product.slug || "")}"
                 >
                     ${flash ? "Mua ngay" : "Chọn gói"}
                 </a>
@@ -562,32 +298,6 @@ function renderProducts(
 }
 
 
-renderProducts(
-    "#flashGrid",
-    flashProducts,
-    {
-        flash: true,
-        initial: 5
-    }
-);
-
-
-renderProducts(
-    "#aiGrid",
-    aiProducts,
-    {
-        initial: 5
-    }
-);
-
-
-renderProducts(
-    "#bestGrid",
-    bestProducts,
-    {
-        initial: 10
-    }
-);
 
 
 /* ==========================================================
@@ -692,7 +402,6 @@ function renderEducation(tab) {
 }
 
 
-renderEducation("language");
 
 
 $$(".education-tab").forEach(
@@ -725,6 +434,16 @@ $$(".education-tab").forEach(
 
     }
 );
+
+loadProductFeed()
+    .then(renderFedProducts)
+    .catch(error => {
+        console.error(error);
+        ["#flashGrid", "#aiGrid", "#bestGrid", "#educationGrid"].forEach(target => {
+            const element = $(target);
+            if (element) element.innerHTML = '<p class="product-feed-error">Không tải được sản phẩm.</p>';
+        });
+    });
 
 
 /* ==========================================================
