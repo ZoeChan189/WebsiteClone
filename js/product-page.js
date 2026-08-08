@@ -297,10 +297,242 @@ const catalog =
     {};
 
 
+function priceToNumber(value) {
+    if (
+        typeof value === "number" &&
+        Number.isFinite(value)
+    ) {
+        return value;
+    }
+
+    return Number(
+        String(value || "0")
+            .replace(/[^\d]/g, "")
+    ) || 0;
+}
+
+
+function findCategoryProduct(slug) {
+    const categories =
+        Object.values(
+            window.CATEGORY_CATALOG || {}
+        );
+
+    for (
+        const category
+        of categories
+    ) {
+        const item =
+            (category.products || [])
+                .find(product => product.slug === slug);
+
+        if (!item) {
+            continue;
+        }
+
+        return {
+            slug:
+                item.slug,
+
+            name:
+                item.name,
+
+            shortName:
+                item.name,
+
+            metaTitle:
+                item.name,
+
+            categoryPath: [
+                {
+                    name:
+                        "Trang chủ",
+                    url:
+                        "index.html"
+                },
+                {
+                    name:
+                        category.name,
+                    url:
+                        `category.html?slug=${encodeURIComponent(category.slug)}`
+                }
+            ],
+
+            image:
+                item.image,
+
+            discount:
+                item.discount || "",
+
+            rating:
+                Number(
+                    String(item.rating || "4.6")
+                        .replace(",", ".")
+                ) || 4.6,
+
+            reviewCount:
+                128,
+
+            satisfiedCount:
+                120,
+
+            sold:
+                priceToNumber(item.sold) || 500,
+
+            highRated:
+                true,
+
+            recentSale: {
+                name:
+                    "Khách hàng",
+                time:
+                    "vừa xong"
+            },
+
+            deal: {
+                enabled:
+                    false
+            },
+
+            variantTitle:
+                "Loại gói:",
+
+            variants: [
+                {
+                    id:
+                        "default",
+                    label:
+                        "Dùng riêng",
+                    available:
+                        !item.outOfStock,
+                    durations: [
+                        {
+                            id:
+                                "12m",
+                            label:
+                                "12 tháng",
+                            price:
+                                priceToNumber(item.price),
+                            oldPrice:
+                                priceToNumber(item.oldPrice)
+                        }
+                    ]
+                }
+            ],
+
+            benefits: [
+                {
+                    icon:
+                        "bi-lightning-charge-fill",
+                    title:
+                        "5–15 phút",
+                    text:
+                        "Giao TK qua email"
+                },
+                {
+                    icon:
+                        "bi-shield",
+                    title:
+                        "Bảo hành",
+                    text:
+                        "Theo thời hạn gói"
+                },
+                {
+                    icon:
+                        "bi-chat",
+                    title:
+                        "Hỗ trợ",
+                    text:
+                        "Qua Zalo"
+                }
+            ],
+
+            notice: [
+                {
+                    html:
+                        "<strong>Lưu ý:</strong> đây là trang sản phẩm động được dựng từ dữ liệu danh mục. Chọn đúng gói và thời hạn trước khi thêm vào giỏ."
+                }
+            ],
+
+            intro: [
+                {
+                    type:
+                        "html",
+                    html:
+                        `<p>${escapeHTML(item.name)} hiện có trên Kho Tài Khoản với giao diện đặt hàng mô phỏng đầy đủ cho bản clone UI.</p>`
+                }
+            ],
+
+            content: [
+                {
+                    id:
+                        "guide",
+                    type:
+                        "heading",
+                    text:
+                        "Hướng dẫn mua sản phẩm",
+                    toc:
+                        true
+                },
+                {
+                    type:
+                        "ordered-list",
+                    items: [
+                        "Chọn loại gói và thời hạn.",
+                        "Bấm Thêm vào giỏ hàng hoặc Mua ngay.",
+                        "Kiểm tra thông tin trong giỏ hàng trước khi thanh toán."
+                    ]
+                }
+            ],
+
+            faq: [
+                {
+                    question:
+                        "Sản phẩm này có bảo hành không?",
+                    answer:
+                        "Có, bảo hành theo thời hạn gói và chính sách của shop."
+                }
+            ],
+
+            updated:
+                "[Cập nhật lần cuối: Tháng 8/2026]",
+
+            related:
+                [],
+
+            reviewSummary: {
+                satisfaction:
+                    96,
+                totalPages:
+                    12,
+                distribution: {
+                    5: 90,
+                    4: 28,
+                    3: 10,
+                    2: 0,
+                    1: 0
+                },
+                mentions:
+                    []
+            },
+
+            reviews:
+                []
+        };
+    }
+
+    return null;
+}
+
+
 const product =
     catalog[
         requestedSlug
     ]
+    ||
+    findCategoryProduct(
+        requestedSlug
+    )
     ||
     catalog[
         "chatgpt-plus"
@@ -3635,7 +3867,25 @@ function setupInteractions() {
     $("#addCartButton")
         ?.addEventListener(
             "click",
-            () => {
+            event => {
+
+                if (
+                    window.KTKCart
+                ) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    window.KTKCart.addCurrentProduct(
+                        $("#addCartButton")
+                    );
+
+                    flashButton(
+                        $("#addCartButton"),
+                        "ÄÃ£ thÃªm âœ“"
+                    );
+
+                    return;
+                }
 
                 console.log(
                     "ADD CART UI",
@@ -3844,6 +4094,23 @@ function setupInteractions() {
             event => {
 
                 event.preventDefault();
+
+                const input =
+                    event.currentTarget.querySelector(
+                        'input[type="search"]'
+                    );
+
+                const keyword =
+                    input
+                        ?.value
+                        ?.trim();
+
+                if (!keyword) {
+                    return;
+                }
+
+                window.location.href =
+                    `search.html?q=${encodeURIComponent(keyword)}`;
 
             }
         );

@@ -194,37 +194,13 @@ if (!category) {
         item
     ) {
 
-        /*
-         * Nếu sản phẩm đã tồn tại
-         * trong PRODUCT_CATALOG
-         * thì mở trang product dynamic.
-         */
-
-        if (
-            window.PRODUCT_CATALOG
-            &&
-            window.PRODUCT_CATALOG[
+        return (
+            "product.html?slug="
+            +
+            encodeURIComponent(
                 item.slug
-            ]
-        ) {
-
-            return (
-                "product.html?slug="
-                +
-                encodeURIComponent(
-                    item.slug
-                )
-            );
-
-        }
-
-
-        /*
-         * Nếu chưa có product data,
-         * không cho nhảy sang một trang sai.
-         */
-
-        return "#";
+            )
+        );
 
     }
 
@@ -1858,10 +1834,8 @@ if (!category) {
                 }
 
 
-                console.log(
-                    "SEARCH:",
-                    keyword
-                );
+                window.location.href =
+                    `search.html?q=${encodeURIComponent(keyword)}`;
 
             }
         );

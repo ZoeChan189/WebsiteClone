@@ -42,13 +42,18 @@
     <!-- COMMON UI -->
     <link
         rel="stylesheet"
-        href="css/style.css"
+        href="css/style.css?v=4"
     >
 
     <!-- PRODUCT PAGE -->
     <link
         rel="stylesheet"
-        href="css/product.css"
+        href="css/product.css?v=4"
+    >
+
+    <link
+        rel="stylesheet"
+        href="css/cart.css?v=4"
     >
     <link rel="stylesheet" href="css/auth.css">
 </head>
@@ -77,7 +82,7 @@
             <a
                 href="index.html#ai-products"
                 class="rail-link"
-                title="Công cụ AI"
+                title="C�ng c? AI"
             >
                 <i class="bi bi-robot"></i>
             </a>
@@ -86,7 +91,7 @@
             <a
                 href="index.html#education"
                 class="rail-link"
-                title="Học tập"
+                title="H?c t?p"
             >
                 <i class="bi bi-mortarboard"></i>
             </a>
@@ -95,7 +100,7 @@
             <a
                 href="#"
                 class="rail-link"
-                title="Làm việc"
+                title="L�m vi?c"
             >
                 <i class="bi bi-briefcase"></i>
             </a>
@@ -104,7 +109,7 @@
             <a
                 href="#"
                 class="rail-link"
-                title="Giải trí"
+                title="Gi?i tr�"
             >
                 <i class="bi bi-controller"></i>
             </a>
@@ -122,7 +127,7 @@
             <a
                 href="#"
                 class="rail-link"
-                title="Lưu trữ"
+                title="Luu tr?"
             >
                 <i class="bi bi-laptop"></i>
             </a>
@@ -140,7 +145,7 @@
             <a
                 href="#"
                 class="rail-link"
-                title="Phần mềm khác"
+                title="Ph?n m?m kh�c"
             >
                 <i class="bi bi-lightning-charge"></i>
             </a>
@@ -386,7 +391,7 @@
                         </a>
 
 
-                        <a href="index.html#buy-process">
+                        <a href="guide.html">
 
                             <span class="nav-mini-icon">
                                 <i class="bi bi-bag-check-fill"></i>
@@ -397,7 +402,7 @@
                         </a>
 
 
-                        <a href="#">
+                        <a href="index.html#reviews">
 
                             <span class="nav-mini-icon">
                                 <i class="bi bi-newspaper"></i>
@@ -438,6 +443,8 @@
                         <button
                             class="header-action cart-action"
                             type="button"
+                            data-cart-open
+                            aria-label="Giỏ hàng"
                         >
 
                             <i class="bi bi-cart3"></i>
@@ -764,6 +771,55 @@
                             × &nbsp; Xóa
                         </button>
 
+                        <section
+                            class="upgrade-info-card"
+                            id="upgradeInfoCard"
+                        >
+
+                            <div class="upgrade-info-heading">
+                                <span>
+                                    <i class="bi bi-bag"></i>
+                                </span>
+
+                                <h2>
+                                    Th&ocirc;ng tin c?n n&acirc;ng c?p
+                                </h2>
+                            </div>
+
+                            <label
+                                class="upgrade-label"
+                                for="upgradeAccountInput"
+                            >
+                                Email ho?c t&ecirc;n dang nh?p
+                            </label>
+
+                            <div class="upgrade-input-wrap">
+                                <i class="bi bi-person"></i>
+
+                                <input
+                                    id="upgradeAccountInput"
+                                    type="text"
+                                    placeholder="ten@gmail.com"
+                                    autocomplete="off"
+                                >
+                            </div>
+
+                            <label class="private-account-check">
+                                <input
+                                    type="checkbox"
+                                    id="privateAccount"
+                                    checked
+                                >
+
+                                <span>
+                                    T&ocirc;i kh&ocirc;ng c&oacute; t&agrave;i kho?n, h&atilde;y c?p t&agrave;i kho?n ri&ecirc;ng tu cho t&ocirc;i
+                                </span>
+
+                                <i class="bi bi-question-circle-fill"></i>
+                            </label>
+
+                        </section>
+
 
                         <!-- =====================================
                              CART
@@ -799,6 +855,7 @@
                                 class="add-cart-button"
                                 id="addCartButton"
                                 type="button"
+                                data-add-to-cart
                             >
                                 Thêm Vào Giỏ Hàng
                             </button>
@@ -1244,27 +1301,27 @@
                             Giới thiệu
                         </h3>
 
-                        <a href="#">
+                        <a href="index.html">
                             Về Kho Tài Khoản
                         </a>
 
-                        <a href="#">
+                        <a href="faq.html">
                             Điều khoản dịch vụ
                         </a>
 
-                        <a href="#">
+                        <a href="faq.html">
                             Chính sách bảo mật
                         </a>
 
-                        <a href="#">
+                        <a href="warranty.html">
                             Chính sách Cookies
                         </a>
 
-                        <a href="#">
+                        <a href="contact.html">
                             Bảo hành và hoàn tiền
                         </a>
 
-                        <a href="#">
+                        <a href="contact.html">
                             Hình thức thanh toán
                         </a>
 
@@ -1277,19 +1334,19 @@
                             Kênh liên hệ & Hỗ trợ
                         </h3>
 
-                        <a href="#">
+                        <a href="contact.html">
                             Facebook: Kho Tài Khoản
                         </a>
 
-                        <a href="#">
+                        <a href="contact.html">
                             Zalo 1: 0865 890 208
                         </a>
 
-                        <a href="#">
+                        <a href="contact.html">
                             Zalo 2: 0856 220 037
                         </a>
 
-                        <a href="#">
+                        <a href="contact.html">
                             Hotline 1: 0865 890 208
                         </a>
 
@@ -1369,6 +1426,32 @@
 
     </div>
 
+
+    <!-- =====================================================
+         MOBILE BOTTOM NAV
+    ====================================================== -->
+
+    <nav class="mobile-bottom-nav">
+
+        <a href="#">
+            <i class="bi bi-heart"></i>
+            <span>Wishlist</span>
+        </a>
+
+        <a
+            href="#"
+            data-cart-open
+        >
+            <i class="bi bi-cart3"></i>
+            <span>Gi? h&agrave;ng</span>
+        </a>
+
+        <a href="index.html#reviews">
+            <i class="bi bi-file-earmark-text"></i>
+            <span>Blog</span>
+        </a>
+
+    </nav>
 
     <!-- =====================================================
          FLOATING CONTACT
@@ -1489,11 +1572,14 @@
          JS
     ====================================================== -->
 
-    <script src="js/products.js"></script>
-    <script src="js/product-page.js"></script>
+    <script src="js/products.js?v=4"></script>
+    <script src="js/categories.js?v=4"></script>
+    <script src="js/product-page.js?v=4"></script>
     <script src="js/sidebar-hover.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/cart.js?v=4"></script>
 
 </body>
 
 </html>
+
