@@ -57,18 +57,18 @@ function clearAdminSession() {
 }
 
 function isAuthError(error) {
-    return /401|đăng nhập|dang nhap|Chưa đăng nhập|Unauthorized/i.test(error.message || "");
+    return /401|\u0111\u0103ng nh\u1eadp|dang nhap|Ch\u01b0a \u0111\u0103ng nh\u1eadp|Unauthorized/i.test(error.message || "");
 }
 
 function handleError(error) {
     if (isAuthError(error)) {
         clearAdminSession();
-        toast("Phien dang nhap het han. Hay dang nhap lai roi bam Luu.");
+        toast("Phi\u00ean \u0111\u0103ng nh\u1eadp h\u1ebft h\u1ea1n. H\u00e3y \u0111\u0103ng nh\u1eadp l\u1ea1i r\u1ed3i b\u1ea5m L\u01b0u.");
         loadPublicData().catch((loadError) => toast(loadError.message));
         return;
     }
 
-    toast(error.message || "Co loi xay ra.");
+    toast(error.message || "C\u00f3 l\u1ed7i x\u1ea3y ra.");
 }
 
 function categoryName(slug) {
@@ -119,7 +119,7 @@ function renderProducts() {
                     ${item.icon ? `<br><small>Icon: ${escapeHTML(item.icon)}</small>` : ""}
                 </td>
                 <td>${escapeHTML(categoryName(item.categorySlug))}</td>
-                <td>${money(item.price)}${item.oldPrice ? `<br><small>Gia cu: ${money(item.oldPrice)}</small>` : ""}</td>
+                <td>${money(item.price)}${item.oldPrice ? `<br><small>Gi&aacute; c&#361;: ${money(item.oldPrice)}</small>` : ""}</td>
                 <td>${Number(item.stock || 0)}</td>
                 <td>
                     <span class="status">${escapeHTML(item.status)}</span>
@@ -127,8 +127,8 @@ function renderProducts() {
                 </td>
                 <td>
                     <div class="row-actions">
-                        <button data-edit-product="${escapeHTML(item.id)}">Sua</button>
-                        <button class="danger" data-delete-product="${escapeHTML(item.id)}">Xoa</button>
+                        <button data-edit-product="${escapeHTML(item.id)}">S&#7917;a</button>
+                        <button class="danger" data-delete-product="${escapeHTML(item.id)}">X&oacute;a</button>
                     </div>
                 </td>
             </tr>
@@ -145,8 +145,8 @@ function renderCategories() {
                 <td><span class="status">${escapeHTML(item.status)}</span></td>
                 <td>
                     <div class="row-actions">
-                        <button data-edit-category="${escapeHTML(item.id)}">Sua</button>
-                        <button class="danger" data-delete-category="${escapeHTML(item.id)}">Xoa</button>
+                        <button data-edit-category="${escapeHTML(item.id)}">S&#7917;a</button>
+                        <button class="danger" data-delete-category="${escapeHTML(item.id)}">X&oacute;a</button>
                     </div>
                 </td>
             </tr>
@@ -296,7 +296,7 @@ function bindEvents() {
             localStorage.setItem("adminSession", result.token);
             localStorage.setItem("adminUsername", result.user.username);
             $("#adminPassword").value = "";
-            toast(`Da dang nhap: ${result.user.name}`);
+            toast(`\u0110\u00e3 \u0111\u0103ng nh\u1eadp: ${result.user.name}`);
             await loadAll();
         } catch (error) {
             handleError(error);
@@ -330,7 +330,7 @@ function bindEvents() {
                 body: JSON.stringify(productPayload())
             });
             $("#productForm").classList.add("hidden");
-            toast("Da luu san pham.");
+            toast("\u0110\u00e3 l\u01b0u s\u1ea3n ph\u1ea9m.");
             await loadAll();
         } catch (error) {
             handleError(error);
@@ -347,7 +347,7 @@ function bindEvents() {
                 body: JSON.stringify(categoryPayload())
             });
             $("#categoryForm").classList.add("hidden");
-            toast("Da luu danh muc.");
+            toast("\u0110\u00e3 l\u01b0u danh m\u1ee5c.");
             await loadAll();
         } catch (error) {
             handleError(error);
@@ -364,10 +364,10 @@ function bindEvents() {
             resetProductForm(state.products.find((item) => item.id === editProductId));
         }
 
-        if (deleteProductId && confirm("Xoa san pham nay?")) {
+        if (deleteProductId && confirm("X\u00f3a s\u1ea3n ph\u1ea9m n\u00e0y?")) {
             try {
                 await api(`/api/products/${deleteProductId}`, { method: "DELETE" });
-                toast("Da xoa san pham.");
+                toast("\u0110\u00e3 x\u00f3a s\u1ea3n ph\u1ea9m.");
                 await loadAll();
             } catch (error) {
                 handleError(error);
@@ -378,10 +378,10 @@ function bindEvents() {
             resetCategoryForm(state.categories.find((item) => item.id === editCategoryId));
         }
 
-        if (deleteCategoryId && confirm("Xoa danh muc nay?")) {
+        if (deleteCategoryId && confirm("X\u00f3a danh m\u1ee5c n\u00e0y?")) {
             try {
                 await api(`/api/categories/${deleteCategoryId}`, { method: "DELETE" });
-                toast("Da xoa danh muc.");
+                toast("\u0110\u00e3 x\u00f3a danh m\u1ee5c.");
                 await loadAll();
             } catch (error) {
                 handleError(error);
@@ -399,7 +399,7 @@ function bindEvents() {
                 method: "PUT",
                 body: JSON.stringify({ status: event.target.value })
             });
-            toast("Da cap nhat don hang.");
+            toast("\u0110\u00e3 c\u1eadp nh\u1eadt \u0111\u01a1n h\u00e0ng.");
             await loadAll();
         } catch (error) {
             handleError(error);

@@ -3881,7 +3881,7 @@ function setupInteractions() {
 
                     flashButton(
                         $("#addCartButton"),
-                        "ÄÃ£ thÃªm âœ“"
+                        "\u0110\u00e3 th\u00eam \u2713"
                     );
 
                     return;
