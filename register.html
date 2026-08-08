@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Đăng ký - Kho Tài Khoản</title>
+
+    <!-- FONT -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- ICON -->
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    >
+
+    <!-- CSS -->
+    <link
+        rel="stylesheet"
+        href="css/style.css"
+    >
+    <link rel="stylesheet" href="css/auth.css">
+    <link rel="stylesheet" href="css/register.css">
+</head>
+
+<body>
+
+    <!-- ======================================================
+         DESKTOP LEFT RAIL
+    ======================================================= -->
+
+    <aside class="left-rail">
+
+        <button
+            class="rail-primary"
+            id="railMenuButton"
+            type="button"
+            aria-label="Mở danh mục"
+        >
+            <i class="bi bi-list"></i>
+        </button>
+
+
+        <nav class="rail-nav">
+
+            <a
+                href="#ai-products"
+                class="rail-link"
+                title="Công cụ AI"
+            >
+                <i class="bi bi-robot"></i>
+            </a>
+
+            <a
+                href="#education"
+                class="rail-link"
+                title="Học tập"
+            >
+                <i class="bi bi-mortarboard"></i>
+            </a>
+
+            <a
+                href="#best-sellers"
+                class="rail-link"
+                title="Làm việc"
+            >
+                <i class="bi bi-briefcase"></i>
+            </a>
+
+            <a
+                href="#education"
+                class="rail-link"
+                title="Giải trí"
+            >
+                <i class="bi bi-controller"></i>
+            </a>
+
+            <a
+                href="#flash-sale"
+                class="rail-link"
+                title="VPN"
+            >
+                <i class="bi bi-shield-check"></i>
+            </a>
+
+            <a
+                href="#best-sellers"
+                class="rail-link"
+                title="Lưu trữ"
+            >
+                <i class="bi bi-laptop"></i>
+            </a>
+
+            <a
+                href="#ai-promo"
+                class="rail-link"
+                title="Anti Virus"
+            >
+                <i class="bi bi-pc-display-horizontal"></i>
+            </a>
+
+            <a
+                href="#footer"
+                class="rail-link"
+                title="Phần mềm khác"
+            >
+                <i class="bi bi-lightning-charge"></i>
+            </a>
+
+        </nav>
+
+    </aside>
+
+
+    <!-- ======================================================
+         CATEGORY DRAWER
+    ======================================================= -->
+
+    <div
+        class="category-backdrop"
+        id="categoryBackdrop"
+    ></div>
+
+    <aside
+        class="category-drawer"
+        id="categoryDrawer"
+    >
+
+        <div class="drawer-header">
+
+            <strong>
+                Tất cả danh mục
+            </strong>
+
+            <button
+                id="closeDrawer"
+                type="button"
+            >
+                <i class="bi bi-x-lg"></i>
+            </button>
+
+        </div>
+
+
+        <nav class="drawer-menu">
+
+            <a href="#ai-products">
+                <i class="bi bi-stars"></i>
+
+                <span>
+                    Công cụ AI
+                </span>
+
+                <i class="bi bi-chevron-right"></i>
+            </a>
+
+
+            <a href="#education">
+                <i class="bi bi-mortarboard"></i>
+
+                <span>
+                    Tài khoản Học tập
+                </span>
+
+                <i class="bi bi-chevron-right"></i>
+            </a>
+
+
+            <a href="#">
+                <i class="bi bi-briefcase"></i>
+
+                <span>
+                    Tài khoản Làm việc
+                </span>
+
+                <i class="bi bi-chevron-right"></i>
+            </a>
+
+
+            <a href="#">
+                <i class="bi bi-film"></i>
+
+                <span>
+                    Tài khoản Giải trí
+                </span>
+
+                <i class="bi bi-chevron-right"></i>
+            </a>
+
+
+            <a href="#">
+                <i class="bi bi-shield-lock"></i>
+
+                <span>
+                    VPN
+                </span>
+
+                <i class="bi bi-chevron-right"></i>
+            </a>
+
+
+            <a href="#">
+                <i class="bi bi-cloud"></i>
+
+                <span>
+                    Lưu trữ
+                </span>
+
+                <i class="bi bi-chevron-right"></i>
+            </a>
+
+
+            <a href="#">
+                <i class="bi bi-shield-check"></i>
+
+                <span>
+                    Anti Virus
+                </span>
+
+                <i class="bi bi-chevron-right"></i>
+            </a>
+
+
+            <a href="#">
+                <i class="bi bi-grid"></i>
+
+                <span>
+                    Phần mềm khác
+                </span>
+
+                <i class="bi bi-chevron-right"></i>
+            </a>
+
+        </nav>
+
+    </aside>
+
+
+    <!-- ======================================================
+         PAGE SHELL
+    ======================================================= -->
+
+    <div class="page-shell">
+
+
+        <!-- ==================================================
+             HEADER
+        =================================================== -->
+
+        <header class="site-header">
+
+
+            <!-- TOP ROW -->
+
+            <div class="header-top">
+
+                <div class="container header-top-inner">
+
+
+                    <!-- MOBILE MENU -->
+
+                    <button
+                        class="mobile-menu-button"
+                        id="mobileMenuButton"
+                        type="button"
+                    >
+                        <i class="bi bi-list"></i>
+                    </button>
+
+
+                    <!-- LOGO -->
+
+                    <a
+                        href="index.html"
+                        class="brand-logo"
+                    >
+
+                        <img
+                            src="https://khotaikhoan.net/wp-content/uploads/2025/02/Logo-kho-tai-khoan-moi.png.webp"
+                            alt="Kho Tài Khoản"
+                        >
+
+                    </a>
+
+
+                    <!-- SEARCH -->
+
+                    <form
+                        class="search-box"
+                        id="searchForm"
+                    >
+
+                        <button
+                            class="search-submit"
+                            type="submit"
+                            aria-label="Tìm kiếm"
+                        >
+                            <i class="bi bi-search"></i>
+                        </button>
+
+
+                        <input
+                            id="searchInput"
+                            type="search"
+                            placeholder="Tìm sản phẩm ..."
+                            autocomplete="off"
+                        >
+
+                    </form>
+
+
+                    <!-- CONTACT -->
+
+                    <a
+                        href="#"
+                        class="top-contact"
+                    >
+
+                        <span class="zalo-word">
+                            Zalo
+                        </span>
+
+                        <strong>
+                            0865 890 208
+                        </strong>
+
+                    </a>
+
+
+                    <!-- MOBILE USER -->
+
+                    <button
+                        class="mobile-user"
+                        type="button"
+                    >
+                        <i class="bi bi-person"></i>
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- SECOND ROW -->
+
+            <div class="header-nav">
+
+                <div class="container header-nav-inner">
+
+
+                    <nav class="desktop-nav">
+
+                        <button
+                            class="category-button"
+                            id="categoryButton"
+                            type="button"
+                        >
+
+                            <span class="category-circle">
+                                <i class="bi bi-list"></i>
+                            </span>
+
+                            <span>
+                                Tất cả danh mục
+                            </span>
+
+                        </button>
+
+
+                        <a href="#commitments">
+
+                            <span class="nav-mini-icon">
+                                <i class="bi bi-info-circle-fill"></i>
+                            </span>
+
+                            Giới Thiệu
+
+                        </a>
+
+
+                        <a href="#buy-process">
+
+                            <span class="nav-mini-icon">
+                                <i class="bi bi-bag-check-fill"></i>
+                            </span>
+
+                            Hướng dẫn mua hàng
+
+                        </a>
+
+
+                        <a href="#reviews">
+
+                            <span class="nav-mini-icon">
+                                <i class="bi bi-newspaper"></i>
+                            </span>
+
+                            Blog tin tức
+
+                        </a>
+
+                    </nav>
+
+
+                    <div class="header-actions">
+
+
+                        <button
+                            class="header-action"
+                            type="button"
+                        >
+                            <i class="bi bi-person"></i>
+                        </button>
+
+
+                        <button
+                            class="header-action"
+                            type="button"
+                        >
+
+                            <i class="bi bi-heart"></i>
+
+                            <span class="action-counter">
+                                0
+                            </span>
+
+                        </button>
+
+
+                        <button
+                            class="header-action cart-action"
+                            type="button"
+                        >
+
+                            <i class="bi bi-cart3"></i>
+
+                            <span class="action-counter">
+                                0
+                            </span>
+
+                        </button>
+
+
+                        <span class="cart-price">
+                            0₫
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </header>
+
+
+        <!-- ==================================================
+             MAIN
+        =================================================== -->
+
+        <main class="register-main">
+            <section class="register-shell">
+                <div class="register-box">
+                    <div class="register-col">
+                        <h1>ĐĂNG KÝ</h1>
+                        <form id="registerPageForm">
+                            <label>Địa chỉ email *
+                                <input id="registerEmail" type="email" autocomplete="email" required>
+                            </label>
+                            <p>Một liên kết để đặt mật khẩu mới sẽ được gửi đến địa chỉ email của bạn.</p>
+                            <button type="submit">Đăng ký</button>
+                        </form>
+                    </div>
+                    <div class="register-col register-info">
+                        <h2>ĐĂNG NHẬP</h2>
+                        <p>Đăng ký trang web này cho phép bạn truy cập trạng thái và lịch sử đơn hàng của mình. Chỉ cần điền vào các trường bên dưới và chúng tôi sẽ thiết lập tài khoản mới cho bạn ngay lập tức. Chúng tôi sẽ chỉ yêu cầu bạn những thông tin cần thiết để giúp quá trình mua hàng nhanh hơn và dễ dàng hơn.</p>
+                        <button id="openLoginLink" type="button">Đăng Nhập</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+
+        <!-- ==================================================
+             FOOTER
+        =================================================== -->
+
+        <footer
+            class="site-footer"
+            id="footer"
+        >
+
+            <div class="container">
+
+
+                <div class="footer-grid">
+
+
+                    <!-- BRAND -->
+
+                    <div class="footer-brand">
+
+
+                        <a
+                            href="index.html"
+                            class="footer-logo"
+                        >
+
+                            <img
+                                src="https://khotaikhoan.net/wp-content/uploads/2025/02/Logo-kho-tai-khoan-moi.png.webp"
+                                alt="Kho Tài Khoản"
+                            >
+
+                        </a>
+
+
+                        <p>
+                            Kho Tài Khoản là đơn vị cung cấp tài khoản,
+                            phần mềm bản quyền chính hãng với giá thành
+                            tốt nhất.
+                        </p>
+
+
+                        <p>
+
+                            <strong>
+                                Giờ làm việc:
+                            </strong>
+
+                            08:00 - 22:00,
+
+                            <strong>
+                                phục vụ tất cả các ngày
+                            </strong>
+
+                            (kể cả Lễ & Tết).
+
+                        </p>
+
+
+                        <h4>
+                            Theo dõi chúng tôi
+                        </h4>
+
+
+                        <div class="social-icons">
+
+
+                            <a href="#">
+                                <i class="bi bi-facebook"></i>
+                            </a>
+
+                            <a href="#">
+                                <i class="bi bi-twitter-x"></i>
+                            </a>
+
+                            <a href="#">
+                                <i class="bi bi-instagram"></i>
+                            </a>
+
+                            <a href="#">
+                                <i class="bi bi-youtube"></i>
+                            </a>
+
+                            <a href="#">
+                                <i class="bi bi-pinterest"></i>
+                            </a>
+
+                            <a href="#">
+                                <i class="bi bi-tiktok"></i>
+                            </a>
+
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ABOUT -->
+
+                    <div class="footer-column">
+
+                        <h3>
+                            Giới thiệu
+                        </h3>
+
+                        <a href="#">
+                            Về Kho Tài Khoản
+                        </a>
+
+                        <a href="#">
+                            Điều khoản dịch vụ
+                        </a>
+
+                        <a href="#">
+                            Chính sách bảo mật
+                        </a>
+
+                        <a href="#">
+                            Chính sách Cookies
+                        </a>
+
+                        <a href="#">
+                            Bảo hành và hoàn tiền
+                        </a>
+
+                        <a href="#">
+                            Hình thức thanh toán
+                        </a>
+
+                    </div>
+
+
+                    <!-- CONTACT -->
+
+                    <div class="footer-column">
+
+                        <h3>
+                            Kênh liên hệ & Hỗ trợ
+                        </h3>
+
+                        <a href="#">
+                            Facebook: Kho Tài Khoản
+                        </a>
+
+                        <a href="#">
+                            Zalo 1: 0865 890 208
+                        </a>
+
+                        <a href="#">
+                            Zalo 2: 0856 220 037
+                        </a>
+
+                        <a href="#">
+                            Hotline 1: 0865 890 208
+                        </a>
+
+                        <a href="#">
+                            Hotline 2: 0856 220 037
+                        </a>
+
+                        <a href="#">
+                            Email: Support@khotaikhoan.net
+                        </a>
+
+                    </div>
+
+
+                    <!-- CATEGORY -->
+
+                    <div class="footer-column">
+
+                        <h3>
+                            Danh mục chính
+                        </h3>
+
+                        <a href="#ai-products">
+                            Công cụ AI
+                        </a>
+
+                        <a href="#">
+                            Tài khoản Làm việc
+                        </a>
+
+                        <a href="#">
+                            Tài khoản Giải trí
+                        </a>
+
+                        <a href="#education">
+                            Tài khoản Học tập
+                        </a>
+
+                        <a href="#">
+                            Tài khoản Lưu trữ
+                        </a>
+
+                        <a href="#">
+                            Tài khoản VPN
+                        </a>
+
+                        <a href="#">
+                            Anti Virus
+                        </a>
+
+                        <a href="#">
+                            Ứng dụng & Phần mềm khác
+                        </a>
+
+                    </div>
+
+
+                </div>
+
+
+                <div class="footer-bottom">
+
+
+                    <p>
+
+                        Copyright © 2024
+
+                        <strong>
+                            Kho Tài Khoản.
+                        </strong>
+
+                        All rights reserved.
+
+                    </p>
+
+
+                    <span class="dmca-badge">
+                        <b>DMCA</b>
+                        PROTECTED
+                    </span>
+
+
+                </div>
+
+            </div>
+
+        </footer>
+
+
+    </div>
+
+
+    <!-- ======================================================
+         FLOATING CONTACT
+    ======================================================= -->
+
+    <div class="floating-contact">
+
+        <a
+            href="#"
+            class="contact-circle zalo-circle"
+        >
+            Zalo
+        </a>
+
+        <a
+            href="#"
+            class="contact-circle telegram-circle"
+        >
+            <i class="bi bi-send-fill"></i>
+        </a>
+
+    </div>
+
+
+    <!-- ======================================================
+         MOBILE BOTTOM NAV
+    ======================================================= -->
+
+    <nav class="mobile-bottom-nav">
+
+        <a href="#">
+            <i class="bi bi-heart"></i>
+            <span>Wishlist</span>
+        </a>
+
+        <a href="#">
+            <i class="bi bi-cart3"></i>
+            <span>Giỏ hàng</span>
+        </a>
+
+        <a href="#reviews">
+            <i class="bi bi-file-earmark-text"></i>
+            <span>Blog</span>
+        </a>
+
+    </nav>
+
+
+    <!-- JS -->
+    <script src="js/sidebar-hover.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/register.js"></script>
+
+</body>
+</html>
