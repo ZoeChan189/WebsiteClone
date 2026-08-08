@@ -503,8 +503,8 @@ const server = http.createServer(async (req, res) => {
     }
 });
 
-server.listen(port, "127.0.0.1", () => {
-    console.log(`WebsiteClone server: http://127.0.0.1:${port}`);
-    console.log(`Admin portal: http://127.0.0.1:${port}/admin.html`);
+server.listen(port, "0.0.0.0", () => {
+    console.log(`WebsiteClone server: http://0.0.0.0:${port}`);
+    console.log(`Admin portal: http://0.0.0.0:${port}/admin.html`);
     console.log("Admin account: admin / admin123");
 });
