@@ -3,13 +3,13 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Admin Portal - Kho Tài Khoản</title>
+    <title>Admin Portal - storetainguyen</title>
     <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
     <aside class="admin-sidebar">
         <a class="admin-brand" href="admin.html">
-            <span>Khotaikhoan</span>
+            <span>storetainguyen</span>
             <small>Admin portal</small>
         </a>
         <button class="admin-nav active" data-view="products">Sản phẩm</button>
@@ -22,7 +22,7 @@
         <header class="admin-header">
             <div>
                 <p class="eyebrow">Local backend</p>
-                <h1>Quản trị Kho Tài Khoản</h1>
+                <h1>Quan tri storetainguyen</h1>
             </div>
             <form id="loginForm" class="token-form">
                 <input id="adminUsername" autocomplete="username" placeholder="Tài khoản">
@@ -41,21 +41,21 @@
         <section class="admin-panel active" id="productsPanel">
             <div class="panel-head">
                 <h2>Sản phẩm</h2>
-                <button id="newProductButton">Thêm sản phẩm</button>
+                <div class="panel-tools"><input id="productSearch" placeholder="Tim san pham, slug, danh muc"><button id="newProductButton">Them san pham</button></div>
             </div>
             <form id="productForm" class="editor-form hidden">
                 <input type="hidden" id="productId">
                 <label>Tên sản phẩm<input id="productName" required></label>
                 <label>Slug<input id="productSlug"></label>
                 <label>Danh mục<select id="productCategory"></select></label>
-                <label>Ảnh<input id="productImage"></label>
+                <label>Anh san pham<input id="productImage" placeholder="https://.../anh-san-pham.webp"></label><label>Icon san pham<input id="productIcon" placeholder="https://.../icon.webp"></label><label>Giam gia<input id="productDiscount" placeholder="-75%"></label>
                 <label>Giá<input id="productPrice" type="number" min="0"></label>
                 <label>Giá cũ<input id="productOldPrice" type="number" min="0"></label>
                 <label>Tồn kho<input id="productStock" type="number" min="0"></label>
                 <label>Đánh giá<input id="productRating" type="number" min="0" max="5" step="0.1"></label>
                 <label>Đã bán<input id="productSold" type="number" min="0"></label>
                 <label>Trạng thái<select id="productStatus"><option value="active">active</option><option value="draft">draft</option></select></label>
-                <label class="full">Mô tả<textarea id="productDescription" rows="3"></textarea></label>
+                <label class="full">Mo ta<textarea id="productDescription" rows="3"></textarea></label><div class="product-preview full"><span>Preview</span><img id="productImagePreview" alt=""><img id="productIconPreview" alt=""></div>
                 <div class="form-actions">
                     <button type="submit">Lưu sản phẩm</button>
                     <button type="button" id="cancelProductButton">Hủy</button>

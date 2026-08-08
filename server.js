@@ -32,6 +32,14 @@ function sendJson(res, status, payload) {
     res.end(JSON.stringify(payload));
 }
 
+function sendJs(res, payload) {
+    res.writeHead(200, {
+        "content-type": "application/javascript; charset=utf-8",
+        "cache-control": "no-store"
+    });
+    res.end(payload);
+}
+
 function sendError(res, status, message) {
     sendJson(res, status, { error: message });
 }
@@ -110,6 +118,8 @@ function normalizeProduct(input, existing = {}) {
         name,
         categorySlug: String(input.categorySlug || existing.categorySlug || "cong-cu-ai").trim(),
         image: String(input.image || existing.image || "").trim(),
+        icon: String(input.icon || existing.icon || "").trim(),
+        discount: String(input.discount || existing.discount || "").trim(),
         price: Number(input.price ?? existing.price ?? 0),
         oldPrice: input.oldPrice === "" ? null : Number(input.oldPrice ?? existing.oldPrice ?? 0),
         stock: Number(input.stock ?? existing.stock ?? 0),
@@ -118,6 +128,172 @@ function normalizeProduct(input, existing = {}) {
         status: input.status || existing.status || "active",
         description: String(input.description || existing.description || "").trim()
     };
+}
+
+function formatMoney(value) {
+    return `${Number(value || 0).toLocaleString("vi-VN")}đ`;
+}
+
+function formatSold(value) {
+    const number = Number(value || 0);
+
+    if (number >= 1000) {
+        return `${(number / 1000).toFixed(1).replace(".", ",").replace(",0", "")}k đã bán`;
+    }
+
+    return `${number} đã bán`;
+}
+
+function productCatalogItem(product, categories) {
+    const category = categories.find((item) => item.slug === product.categorySlug);
+    const image = product.image || product.icon || "";
+    const price = Number(product.price || 0);
+    const oldPrice = Number(product.oldPrice || 0);
+
+    return {
+        slug: product.slug,
+        name: product.name,
+        shortName: product.name,
+        metaTitle: product.name,
+        categorySlug: product.categorySlug,
+        categoryPath: [
+            { name: "Trang chủ", url: "index.html" },
+            {
+                name: category?.name || product.categorySlug || "Danh mục",
+                url: `category.html?slug=${encodeURIComponent(product.categorySlug || "")}`
+            }
+        ],
+        image,
+        icon: product.icon || image,
+        discount: product.discount || "",
+        rating: Number(product.rating || 4.6),
+        reviewCount: 128,
+        satisfiedCount: 120,
+        sold: Number(product.sold || 0),
+        highRated: true,
+        recentSale: { name: "Khách hàng", time: "vừa xong" },
+        deal: { enabled: !!product.discount },
+        variantTitle: "Loại gói:",
+        variants: [
+            {
+                id: "default",
+                label: "Dùng riêng",
+                available: product.status !== "draft" && Number(product.stock || 0) !== 0,
+                durations: [
+                    {
+                        id: "12m",
+                        label: "12 tháng",
+                        price,
+                        oldPrice
+                    }
+                ]
+            }
+        ],
+        benefits: [
+            { icon: "bi-lightning-charge-fill", title: "5-15 phút", text: "Giao TK qua email" },
+            { icon: "bi-shield", title: "Bảo hành", text: "Theo thời hạn gói" },
+            { icon: "bi-chat", title: "Hỗ trợ", text: "Qua Zalo" }
+        ],
+        notice: [
+            {
+                html: `<strong>Lưu ý:</strong> ${product.description || "Chọn đúng gói và thời hạn trước khi thêm vào giỏ."}`
+            }
+        ],
+        intro: [
+            {
+                type: "html",
+                html: `<p>${product.description || `${product.name} đang được bán tại storetainguyen.`}</p>`
+            }
+        ],
+        content: [
+            { id: "guide", type: "heading", text: "Hướng dẫn mua sản phẩm", toc: true },
+            {
+                type: "ordered-list",
+                items: [
+                    "Chọn loại gói và thời hạn.",
+                    "Bấm Thêm vào giỏ hàng hoặc Mua ngay.",
+                    "Kiểm tra thông tin trong giỏ hàng trước khi thanh toán."
+                ]
+            }
+        ],
+        faq: [
+            {
+                question: "Sản phẩm này có bảo hành không?",
+                answer: "Có, bảo hành theo thời hạn gói và chính sách của shop."
+            }
+        ],
+        updated: "[Cập nhật lần cuối: Tháng 8/2026]",
+        related: [],
+        reviewSummary: {
+            satisfaction: 96,
+            totalPages: 12,
+            distribution: { 5: 90, 4: 28, 3: 10, 2: 0, 1: 0 },
+            mentions: []
+        },
+        reviews: []
+    };
+}
+
+function categoryCatalogItem(category, products) {
+    const items = products
+        .filter((product) => product.categorySlug === category.slug && product.status !== "draft")
+        .map((product) => ({
+            slug: product.slug,
+            name: product.name,
+            image: product.image || product.icon || "",
+            icon: product.icon || product.image || "",
+            discount: product.discount || "",
+            rating: String(product.rating || "4.6").replace(".", ","),
+            sold: formatSold(product.sold),
+            price: formatMoney(product.price),
+            oldPrice: product.oldPrice ? formatMoney(product.oldPrice) : null,
+            outOfStock: Number(product.stock || 0) === 0,
+            button: "Chọn gói"
+        }));
+
+    return {
+        slug: category.slug,
+        name: category.name,
+        metaTitle: `${category.name} | storetainguyen`,
+        metaDescription: category.description || "",
+        totalProducts: items.length,
+        totalPages: Math.max(1, Math.ceil(items.length / 12)),
+        description: category.description ? [category.description] : [],
+        products: items
+    };
+}
+
+async function serveLiveCatalog(res, type) {
+    const db = await readDb();
+    const activeProducts = (db.products || []).filter((product) => product.status !== "draft");
+    const activeCategories = (db.categories || []).filter((category) => category.status !== "draft");
+
+    if (type === "products") {
+        const catalog = Object.fromEntries(
+            activeProducts.map((product) => [
+                product.slug,
+                productCatalogItem(product, activeCategories)
+            ])
+        );
+
+        sendJs(
+            res,
+            `"use strict";\nwindow.PRODUCT_CATALOG = ${JSON.stringify(catalog, null, 2)};\n`
+        );
+        return;
+    }
+
+    const catalog = Object.fromEntries(
+        activeCategories.map((category) => [
+            category.slug,
+            categoryCatalogItem(category, activeProducts)
+        ])
+    );
+
+    sendJs(
+        res,
+        `"use strict";\nwindow.CATEGORY_CATALOG = ${JSON.stringify(catalog, null, 2)};\n`
+    );
 }
 
 function normalizeCategory(input, existing = {}) {
@@ -468,6 +644,16 @@ async function handleApi(req, res, url) {
 }
 
 async function serveStatic(req, res, url) {
+    if (url.pathname === "/js/products.js") {
+        await serveLiveCatalog(res, "products");
+        return;
+    }
+
+    if (url.pathname === "/js/categories.js") {
+        await serveLiveCatalog(res, "categories");
+        return;
+    }
+
     const pathname = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
     const filePath = path.resolve(rootDir, `.${pathname}`);
 

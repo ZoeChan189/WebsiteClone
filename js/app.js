@@ -1330,5 +1330,5 @@ document.addEventListener(
 ========================================================== */
 
 console.log(
-    "Kho Tai Khoan UI v2 loaded."
+    "storetainguyen UI v2 loaded."
 );

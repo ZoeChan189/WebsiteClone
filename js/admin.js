@@ -10,6 +10,15 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 const money = (value) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
 
+function escapeHTML(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
 function toast(message) {
     const el = $("#toast");
     el.textContent = message;
@@ -46,7 +55,7 @@ function productName(id) {
 
 function fillCategorySelect() {
     $("#productCategory").innerHTML = state.categories
-        .map((item) => `<option value="${item.slug}">${item.name}</option>`)
+        .map((item) => `<option value="${escapeHTML(item.slug)}">${escapeHTML(item.name)}</option>`)
         .join("");
 }
 
@@ -57,23 +66,43 @@ function renderStats(summary) {
     $("#statRevenue").textContent = money(summary.revenue);
 }
 
+function visibleProducts() {
+    const keyword = ($("#productSearch")?.value || "").trim().toLowerCase();
+
+    return state.products.filter((item) => {
+        const haystack = [
+            item.name,
+            item.slug,
+            item.categorySlug,
+            categoryName(item.categorySlug),
+            item.status
+        ].join(" ").toLowerCase();
+
+        return !keyword || haystack.includes(keyword);
+    });
+}
+
 function renderProducts() {
-    $("#productsTable").innerHTML = state.products
+    $("#productsTable").innerHTML = visibleProducts()
         .map((item) => `
             <tr>
                 <td>
-                    <img src="${item.image || ""}" alt="">
-                    <strong>${item.name}</strong><br>
-                    <small>${item.slug}</small>
+                    <img src="${escapeHTML(item.image || item.icon || "")}" alt="">
+                    <strong>${escapeHTML(item.name)}</strong><br>
+                    <small>${escapeHTML(item.slug)}</small>
+                    ${item.icon ? `<br><small>Icon: ${escapeHTML(item.icon)}</small>` : ""}
                 </td>
-                <td>${categoryName(item.categorySlug)}</td>
-                <td>${money(item.price)}</td>
-                <td>${item.stock}</td>
-                <td><span class="status">${item.status}</span></td>
+                <td>${escapeHTML(categoryName(item.categorySlug))}</td>
+                <td>${money(item.price)}${item.oldPrice ? `<br><small>Gia cu: ${money(item.oldPrice)}</small>` : ""}</td>
+                <td>${Number(item.stock || 0)}</td>
+                <td>
+                    <span class="status">${escapeHTML(item.status)}</span>
+                    ${item.discount ? `<br><small>${escapeHTML(item.discount)}</small>` : ""}
+                </td>
                 <td>
                     <div class="row-actions">
-                        <button data-edit-product="${item.id}">Sửa</button>
-                        <button class="danger" data-delete-product="${item.id}">Xóa</button>
+                        <button data-edit-product="${escapeHTML(item.id)}">Sua</button>
+                        <button class="danger" data-delete-product="${escapeHTML(item.id)}">Xoa</button>
                     </div>
                 </td>
             </tr>
@@ -85,13 +114,13 @@ function renderCategories() {
     $("#categoriesTable").innerHTML = state.categories
         .map((item) => `
             <tr>
-                <td><strong>${item.name}</strong><br><small>${item.description || ""}</small></td>
-                <td>${item.slug}</td>
-                <td><span class="status">${item.status}</span></td>
+                <td><strong>${escapeHTML(item.name)}</strong><br><small>${escapeHTML(item.description || "")}</small></td>
+                <td>${escapeHTML(item.slug)}</td>
+                <td><span class="status">${escapeHTML(item.status)}</span></td>
                 <td>
                     <div class="row-actions">
-                        <button data-edit-category="${item.id}">Sửa</button>
-                        <button class="danger" data-delete-category="${item.id}">Xóa</button>
+                        <button data-edit-category="${escapeHTML(item.id)}">Sua</button>
+                        <button class="danger" data-delete-category="${escapeHTML(item.id)}">Xoa</button>
                     </div>
                 </td>
             </tr>
@@ -103,11 +132,11 @@ function renderOrders() {
     $("#ordersTable").innerHTML = state.orders
         .map((item) => `
             <tr>
-                <td><strong>${item.customerName || "-"}</strong><br><small>${item.customerPhone || ""}</small></td>
-                <td>${productName(item.productId)} x ${item.quantity}</td>
+                <td><strong>${escapeHTML(item.customerName || "-")}</strong><br><small>${escapeHTML(item.customerPhone || "")}</small></td>
+                <td>${escapeHTML(productName(item.productId))} x ${Number(item.quantity || 1)}</td>
                 <td>${money(item.total)}</td>
                 <td>
-                    <select data-order-status="${item.id}">
+                    <select data-order-status="${escapeHTML(item.id)}">
                         ${["pending", "paid", "delivered", "cancelled"].map((status) => `
                             <option value="${status}" ${status === item.status ? "selected" : ""}>${status}</option>
                         `).join("")}
@@ -156,12 +185,26 @@ async function loadPublicData() {
     renderOrders();
 }
 
+function updateProductPreview() {
+    const image = $("#productImage").value.trim();
+    const icon = $("#productIcon").value.trim();
+    const imagePreview = $("#productImagePreview");
+    const iconPreview = $("#productIconPreview");
+
+    imagePreview.src = image;
+    iconPreview.src = icon || image;
+    imagePreview.classList.toggle("hidden", !image);
+    iconPreview.classList.toggle("hidden", !(icon || image));
+}
+
 function resetProductForm(product = {}) {
     $("#productId").value = product.id || "";
     $("#productName").value = product.name || "";
     $("#productSlug").value = product.slug || "";
     $("#productCategory").value = product.categorySlug || state.categories[0]?.slug || "";
     $("#productImage").value = product.image || "";
+    $("#productIcon").value = product.icon || "";
+    $("#productDiscount").value = product.discount || "";
     $("#productPrice").value = product.price || 0;
     $("#productOldPrice").value = product.oldPrice || "";
     $("#productStock").value = product.stock || 0;
@@ -169,6 +212,7 @@ function resetProductForm(product = {}) {
     $("#productSold").value = product.sold || 0;
     $("#productStatus").value = product.status || "active";
     $("#productDescription").value = product.description || "";
+    updateProductPreview();
     $("#productForm").classList.remove("hidden");
 }
 
@@ -187,6 +231,8 @@ function productPayload() {
         slug: $("#productSlug").value,
         categorySlug: $("#productCategory").value,
         image: $("#productImage").value,
+        icon: $("#productIcon").value,
+        discount: $("#productDiscount").value,
         price: Number($("#productPrice").value),
         oldPrice: $("#productOldPrice").value,
         stock: Number($("#productStock").value),
@@ -222,7 +268,7 @@ function bindEvents() {
         localStorage.setItem("adminSession", result.token);
         localStorage.setItem("adminUsername", result.user.username);
         $("#adminPassword").value = "";
-        toast(`Đã đăng nhập: ${result.user.name}`);
+        toast(`Da dang nhap: ${result.user.name}`);
         await loadAll();
     });
 
@@ -239,6 +285,9 @@ function bindEvents() {
     $("#cancelProductButton").addEventListener("click", () => $("#productForm").classList.add("hidden"));
     $("#newCategoryButton").addEventListener("click", () => resetCategoryForm());
     $("#cancelCategoryButton").addEventListener("click", () => $("#categoryForm").classList.add("hidden"));
+    $("#productSearch")?.addEventListener("input", renderProducts);
+    $("#productImage")?.addEventListener("input", updateProductPreview);
+    $("#productIcon")?.addEventListener("input", updateProductPreview);
 
     $("#productForm").addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -248,7 +297,7 @@ function bindEvents() {
             body: JSON.stringify(productPayload())
         });
         $("#productForm").classList.add("hidden");
-        toast("Đã lưu sản phẩm.");
+        toast("Da luu san pham.");
         await loadAll();
     });
 
@@ -260,7 +309,7 @@ function bindEvents() {
             body: JSON.stringify(categoryPayload())
         });
         $("#categoryForm").classList.add("hidden");
-        toast("Đã lưu danh mục.");
+        toast("Da luu danh muc.");
         await loadAll();
     });
 
@@ -274,9 +323,9 @@ function bindEvents() {
             resetProductForm(state.products.find((item) => item.id === editProductId));
         }
 
-        if (deleteProductId && confirm("Xóa sản phẩm này?")) {
+        if (deleteProductId && confirm("Xoa san pham nay?")) {
             await api(`/api/products/${deleteProductId}`, { method: "DELETE" });
-            toast("Đã xóa sản phẩm.");
+            toast("Da xoa san pham.");
             await loadAll();
         }
 
@@ -284,9 +333,9 @@ function bindEvents() {
             resetCategoryForm(state.categories.find((item) => item.id === editCategoryId));
         }
 
-        if (deleteCategoryId && confirm("Xóa danh mục này?")) {
+        if (deleteCategoryId && confirm("Xoa danh muc nay?")) {
             await api(`/api/categories/${deleteCategoryId}`, { method: "DELETE" });
-            toast("Đã xóa danh mục.");
+            toast("Da xoa danh muc.");
             await loadAll();
         }
     });
@@ -300,7 +349,7 @@ function bindEvents() {
             method: "PUT",
             body: JSON.stringify({ status: event.target.value })
         });
-        toast("Đã cập nhật đơn hàng.");
+        toast("Da cap nhat don hang.");
         await loadAll();
     });
 }
