@@ -2,6 +2,7 @@
 
 const crypto = require("crypto");
 const fs = require("fs/promises");
+const https = require("https");
 const http = require("http");
 const path = require("path");
 const { URL } = require("url");
@@ -10,6 +11,10 @@ const rootDir = __dirname;
 const dataFile = path.join(rootDir, "data", "db.json");
 const port = Number(process.env.PORT || 8010);
 const sessionSecret = process.env.SESSION_SECRET || "storetainguyen-dev-session-secret";
+const githubToken = process.env.GITHUB_TOKEN || "";
+const githubRepo = process.env.GITHUB_REPO || "ZoeChan189/WebsiteClone";
+const githubBranch = process.env.GITHUB_BRANCH || "feature/cart";
+const githubDbPath = process.env.GITHUB_DB_PATH || "data/db.json";
 const sessions = new Map();
 
 const mimeTypes = {
@@ -43,6 +48,52 @@ function sendJs(res, payload) {
 
 function sendError(res, status, message) {
     sendJson(res, status, { error: message });
+}
+
+function githubRequest(method, apiPath, body = null) {
+    return new Promise((resolve, reject) => {
+        const payload = body ? JSON.stringify(body) : "";
+        const request = https.request(
+            {
+                hostname: "api.github.com",
+                path: apiPath,
+                method,
+                headers: {
+                    "accept": "application/vnd.github+json",
+                    "authorization": `Bearer ${githubToken}`,
+                    "content-type": "application/json",
+                    "content-length": Buffer.byteLength(payload),
+                    "user-agent": "storetainguyen-admin-sync",
+                    "x-github-api-version": "2022-11-28"
+                }
+            },
+            (response) => {
+                const chunks = [];
+
+                response.on("data", (chunk) => chunks.push(chunk));
+                response.on("end", () => {
+                    const raw = Buffer.concat(chunks).toString("utf8");
+                    let data = {};
+
+                    try {
+                        data = raw ? JSON.parse(raw) : {};
+                    } catch {
+                        data = { message: raw };
+                    }
+
+                    if (response.statusCode >= 200 && response.statusCode < 300) {
+                        resolve(data);
+                        return;
+                    }
+
+                    reject(new Error(data.message || `GitHub API error ${response.statusCode}`));
+                });
+            }
+        );
+
+        request.on("error", reject);
+        request.end(payload);
+    });
 }
 
 function hashPassword(password) {
@@ -136,8 +187,53 @@ async function readDb() {
     return JSON.parse(raw);
 }
 
+let githubSyncQueue = Promise.resolve();
+
+async function syncDbToGithub(raw) {
+    if (!githubToken) {
+        return;
+    }
+
+    githubSyncQueue = githubSyncQueue.then(async () => {
+        const encodedPath = githubDbPath
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/");
+
+        const current = await githubRequest(
+            "GET",
+            `/repos/${githubRepo}/contents/${encodedPath}?ref=${encodeURIComponent(githubBranch)}`
+        );
+
+        await githubRequest(
+            "PUT",
+            `/repos/${githubRepo}/contents/${encodedPath}`,
+            {
+                message: `Update ${githubDbPath} from admin panel`,
+                content: Buffer.from(raw, "utf8").toString("base64"),
+                sha: current.sha,
+                branch: githubBranch
+            }
+        );
+    });
+
+    return githubSyncQueue;
+}
+
 async function writeDb(db) {
-    await fs.writeFile(dataFile, JSON.stringify(db, null, 2) + "\n", "utf8");
+    const raw = JSON.stringify(db, null, 2) + "\n";
+
+    await fs.writeFile(dataFile, raw, "utf8");
+
+    try {
+        await syncDbToGithub(raw);
+    } catch (error) {
+        console.error("GitHub db sync failed:", error.message);
+
+        if (githubToken) {
+            throw new Error("Đã lưu tạm trên server nhưng chưa đồng bộ được data/db.json lên GitHub: " + error.message);
+        }
+    }
 }
 
 function createId(prefix) {
