@@ -8,7 +8,13 @@ const state = {
 };
 
 const $ = (selector) => document.querySelector(selector);
-const money = (value) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
+
+function priceToVnd(value) {
+    const number = Number(value || 0);
+    return number > 0 && number < 10000 ? number * 1000 : number;
+}
+
+const money = (value) => `${priceToVnd(value).toLocaleString("vi-VN")}\u0111`;
 
 function escapeHTML(value) {
     return String(value ?? "")
@@ -43,6 +49,26 @@ async function api(path, options = {}) {
     }
 
     return data;
+}
+
+function clearAdminSession() {
+    state.authToken = "";
+    localStorage.removeItem("adminSession");
+}
+
+function isAuthError(error) {
+    return /401|đăng nhập|dang nhap|Chưa đăng nhập|Unauthorized/i.test(error.message || "");
+}
+
+function handleError(error) {
+    if (isAuthError(error)) {
+        clearAdminSession();
+        toast("Phien dang nhap het han. Hay dang nhap lai roi bam Luu.");
+        loadPublicData().catch((loadError) => toast(loadError.message));
+        return;
+    }
+
+    toast(error.message || "Co loi xay ra.");
 }
 
 function categoryName(slug) {
@@ -257,19 +283,24 @@ function bindEvents() {
 
     $("#loginForm").addEventListener("submit", async (event) => {
         event.preventDefault();
-        const result = await api("/api/auth/login", {
-            method: "POST",
-            body: JSON.stringify({
-                username: $("#adminUsername").value.trim(),
-                password: $("#adminPassword").value
-            })
-        });
-        state.authToken = result.token;
-        localStorage.setItem("adminSession", result.token);
-        localStorage.setItem("adminUsername", result.user.username);
-        $("#adminPassword").value = "";
-        toast(`Da dang nhap: ${result.user.name}`);
-        await loadAll();
+
+        try {
+            const result = await api("/api/auth/login", {
+                method: "POST",
+                body: JSON.stringify({
+                    username: $("#adminUsername").value.trim(),
+                    password: $("#adminPassword").value
+                })
+            });
+            state.authToken = result.token;
+            localStorage.setItem("adminSession", result.token);
+            localStorage.setItem("adminUsername", result.user.username);
+            $("#adminPassword").value = "";
+            toast(`Da dang nhap: ${result.user.name}`);
+            await loadAll();
+        } catch (error) {
+            handleError(error);
+        }
     });
 
     document.querySelectorAll(".admin-nav").forEach((button) => {
@@ -291,26 +322,36 @@ function bindEvents() {
 
     $("#productForm").addEventListener("submit", async (event) => {
         event.preventDefault();
-        const id = $("#productId").value;
-        await api(id ? `/api/products/${id}` : "/api/products", {
-            method: id ? "PUT" : "POST",
-            body: JSON.stringify(productPayload())
-        });
-        $("#productForm").classList.add("hidden");
-        toast("Da luu san pham.");
-        await loadAll();
+
+        try {
+            const id = $("#productId").value;
+            await api(id ? `/api/products/${id}` : "/api/products", {
+                method: id ? "PUT" : "POST",
+                body: JSON.stringify(productPayload())
+            });
+            $("#productForm").classList.add("hidden");
+            toast("Da luu san pham.");
+            await loadAll();
+        } catch (error) {
+            handleError(error);
+        }
     });
 
     $("#categoryForm").addEventListener("submit", async (event) => {
         event.preventDefault();
-        const id = $("#categoryId").value;
-        await api(id ? `/api/categories/${id}` : "/api/categories", {
-            method: id ? "PUT" : "POST",
-            body: JSON.stringify(categoryPayload())
-        });
-        $("#categoryForm").classList.add("hidden");
-        toast("Da luu danh muc.");
-        await loadAll();
+
+        try {
+            const id = $("#categoryId").value;
+            await api(id ? `/api/categories/${id}` : "/api/categories", {
+                method: id ? "PUT" : "POST",
+                body: JSON.stringify(categoryPayload())
+            });
+            $("#categoryForm").classList.add("hidden");
+            toast("Da luu danh muc.");
+            await loadAll();
+        } catch (error) {
+            handleError(error);
+        }
     });
 
     document.body.addEventListener("click", async (event) => {
@@ -324,9 +365,13 @@ function bindEvents() {
         }
 
         if (deleteProductId && confirm("Xoa san pham nay?")) {
-            await api(`/api/products/${deleteProductId}`, { method: "DELETE" });
-            toast("Da xoa san pham.");
-            await loadAll();
+            try {
+                await api(`/api/products/${deleteProductId}`, { method: "DELETE" });
+                toast("Da xoa san pham.");
+                await loadAll();
+            } catch (error) {
+                handleError(error);
+            }
         }
 
         if (editCategoryId) {
@@ -334,9 +379,13 @@ function bindEvents() {
         }
 
         if (deleteCategoryId && confirm("Xoa danh muc nay?")) {
-            await api(`/api/categories/${deleteCategoryId}`, { method: "DELETE" });
-            toast("Da xoa danh muc.");
-            await loadAll();
+            try {
+                await api(`/api/categories/${deleteCategoryId}`, { method: "DELETE" });
+                toast("Da xoa danh muc.");
+                await loadAll();
+            } catch (error) {
+                handleError(error);
+            }
         }
     });
 
@@ -345,14 +394,18 @@ function bindEvents() {
 
         if (!orderId) return;
 
-        await api(`/api/orders/${orderId}`, {
-            method: "PUT",
-            body: JSON.stringify({ status: event.target.value })
-        });
-        toast("Da cap nhat don hang.");
-        await loadAll();
+        try {
+            await api(`/api/orders/${orderId}`, {
+                method: "PUT",
+                body: JSON.stringify({ status: event.target.value })
+            });
+            toast("Da cap nhat don hang.");
+            await loadAll();
+        } catch (error) {
+            handleError(error);
+        }
     });
 }
 
 bindEvents();
-(state.authToken ? loadAll() : loadPublicData()).catch((error) => toast(error.message));
+(state.authToken ? loadAll() : loadPublicData()).catch(handleError);

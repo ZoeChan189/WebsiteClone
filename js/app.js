@@ -38,7 +38,9 @@ let educationProducts = {
 };
 
 function formatCurrency(value) {
-    return Number(value || 0).toLocaleString("vi-VN") + "₫";
+    const number = Number(value || 0);
+    const amount = number > 0 && number < 10000 ? number * 1000 : number;
+    return amount.toLocaleString("vi-VN") + "\u0111";
 }
 
 

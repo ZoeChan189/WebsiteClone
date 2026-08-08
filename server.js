@@ -9,6 +9,7 @@ const { URL } = require("url");
 const rootDir = __dirname;
 const dataFile = path.join(rootDir, "data", "db.json");
 const port = Number(process.env.PORT || 8010);
+const sessionSecret = process.env.SESSION_SECRET || "storetainguyen-dev-session-secret";
 const sessions = new Map();
 
 const mimeTypes = {
@@ -48,16 +49,62 @@ function hashPassword(password) {
     return crypto.createHash("sha256").update(String(password)).digest("hex");
 }
 
+function base64UrlEncode(value) {
+    return Buffer.from(value).toString("base64url");
+}
+
+function base64UrlDecode(value) {
+    return Buffer.from(value, "base64url").toString("utf8");
+}
+
+function signPayload(payload) {
+    return crypto
+        .createHmac("sha256", sessionSecret)
+        .update(payload)
+        .digest("base64url");
+}
+
+function createSessionToken(userId) {
+    const payload = base64UrlEncode(JSON.stringify({
+        userId,
+        createdAt: Date.now()
+    }));
+
+    return `${payload}.${signPayload(payload)}`;
+}
+
+function userIdFromToken(token) {
+    if (!token) {
+        return "";
+    }
+
+    if (sessions.has(token)) {
+        return sessions.get(token).userId;
+    }
+
+    const [payload, signature] = token.split(".");
+
+    if (!payload || !signature || signPayload(payload) !== signature) {
+        return "";
+    }
+
+    try {
+        return JSON.parse(base64UrlDecode(payload)).userId || "";
+    } catch {
+        return "";
+    }
+}
+
 function authUser(req, db) {
     const header = req.headers.authorization || "";
     const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-    const session = sessions.get(token);
+    const userId = userIdFromToken(token);
 
-    if (!session) {
+    if (!userId) {
         return null;
     }
 
-    return db.users?.find((user) => user.id === session.userId) || null;
+    return db.users?.find((user) => user.id === userId) || null;
 }
 
 function isAdmin(req, db) {
@@ -130,8 +177,13 @@ function normalizeProduct(input, existing = {}) {
     };
 }
 
+function priceToVnd(value) {
+    const number = Number(value || 0);
+    return number > 0 && number < 10000 ? number * 1000 : number;
+}
+
 function formatMoney(value) {
-    return `${Number(value || 0).toLocaleString("vi-VN")}đ`;
+    return `${priceToVnd(value).toLocaleString("vi-VN")}đ`;
 }
 
 function formatSold(value) {
@@ -147,8 +199,8 @@ function formatSold(value) {
 function productCatalogItem(product, categories) {
     const category = categories.find((item) => item.slug === product.categorySlug);
     const image = product.image || product.icon || "";
-    const price = Number(product.price || 0);
-    const oldPrice = Number(product.oldPrice || 0);
+    const price = priceToVnd(product.price);
+    const oldPrice = priceToVnd(product.oldPrice);
 
     return {
         slug: product.slug,
@@ -333,11 +385,7 @@ async function handleApi(req, res, url) {
             return;
         }
 
-        const token = crypto.randomBytes(24).toString("hex");
-        sessions.set(token, {
-            userId: user.id,
-            createdAt: Date.now()
-        });
+        const token = createSessionToken(user.id);
 
         sendJson(res, 200, {
             token,
@@ -389,8 +437,7 @@ async function handleApi(req, res, url) {
         db.users.push(user);
         await writeDb(db);
 
-        const token = crypto.randomBytes(24).toString("hex");
-        sessions.set(token, { userId: user.id, createdAt: Date.now() });
+        const token = createSessionToken(user.id);
 
         sendJson(res, 201, {
             token,
