@@ -4,11 +4,26 @@ const state = {
     products: [],
     categories: [],
     orders: [],
-    authToken: localStorage.getItem("adminSession") || ""
+    authenticated: false
 };
 
 const $ = (selector) => document.querySelector(selector);
-const money = (value) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
+
+function priceToVnd(value) {
+    const number = Number(value || 0);
+    return number > 0 && number < 10000 ? number * 1000 : number;
+}
+
+const money = (value) => `${priceToVnd(value).toLocaleString("vi-VN")}\u0111`;
+
+function escapeHTML(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
 
 function toast(message) {
     const el = $("#toast");
@@ -22,7 +37,6 @@ async function api(path, options = {}) {
         ...options,
         headers: {
             "content-type": "application/json",
-            "authorization": state.authToken ? `Bearer ${state.authToken}` : "",
             ...(options.headers || {})
         }
     });
@@ -30,10 +44,44 @@ async function api(path, options = {}) {
     const data = await res.json();
 
     if (!res.ok) {
-        throw new Error(data.error || "API lỗi.");
+        const error = new Error(data.error || "API lỗi.");
+        error.status = res.status;
+        throw error;
     }
 
     return data;
+}
+
+function clearAdminSession() {
+    setAuthenticated(false);
+}
+
+function isAuthError(error) {
+    return error.status === 401
+        || /\u0111\u0103ng nh\u1eadp|dang nhap|Ch\u01b0a \u0111\u0103ng nh\u1eadp|Unauthorized/i.test(error.message || "");
+}
+
+function setAuthenticated(authenticated) {
+    state.authenticated = Boolean(authenticated);
+    document.body.classList.toggle("admin-authenticated", state.authenticated);
+    document.querySelectorAll("[data-admin-only]").forEach((element) => {
+        element.classList.toggle("hidden", !state.authenticated);
+    });
+    $("#adminUsername").classList.toggle("hidden", state.authenticated);
+    $("#adminPassword").classList.toggle("hidden", state.authenticated);
+    $("#adminLoginButton").classList.toggle("hidden", state.authenticated);
+    $("#adminLogoutButton").classList.toggle("hidden", !state.authenticated);
+}
+
+function handleError(error) {
+    if (isAuthError(error)) {
+        clearAdminSession();
+        toast("Phi\u00ean \u0111\u0103ng nh\u1eadp h\u1ebft h\u1ea1n. H\u00e3y \u0111\u0103ng nh\u1eadp l\u1ea1i r\u1ed3i b\u1ea5m L\u01b0u.");
+        loadPublicData().catch((loadError) => toast(loadError.message));
+        return;
+    }
+
+    toast(error.message || "C\u00f3 l\u1ed7i x\u1ea3y ra.");
 }
 
 function categoryName(slug) {
@@ -46,7 +94,7 @@ function productName(id) {
 
 function fillCategorySelect() {
     $("#productCategory").innerHTML = state.categories
-        .map((item) => `<option value="${item.slug}">${item.name}</option>`)
+        .map((item) => `<option value="${escapeHTML(item.slug)}">${escapeHTML(item.name)}</option>`)
         .join("");
 }
 
@@ -57,41 +105,73 @@ function renderStats(summary) {
     $("#statRevenue").textContent = money(summary.revenue);
 }
 
+function visibleProducts() {
+    const keyword = ($("#productSearch")?.value || "").trim().toLowerCase();
+
+    return state.products.filter((item) => {
+        const haystack = [
+            item.name,
+            item.slug,
+            item.categorySlug,
+            categoryName(item.categorySlug),
+            item.status
+        ].join(" ").toLowerCase();
+
+        return !keyword || haystack.includes(keyword);
+    });
+}
+
 function renderProducts() {
-    $("#productsTable").innerHTML = state.products
+    $("#productsTable").innerHTML = visibleProducts()
         .map((item) => `
             <tr>
                 <td>
-                    <img src="${item.image || ""}" alt="">
-                    <strong>${item.name}</strong><br>
-                    <small>${item.slug}</small>
+                    ${item.image || item.icon ? `<img data-admin-product-image src="${escapeHTML(item.image || item.icon)}" alt="${escapeHTML(item.name)}" loading="lazy">` : ""}
+                    <strong>${escapeHTML(item.name)}</strong><br>
+                    <small>${escapeHTML(item.slug)}</small>
+                    ${item.icon ? `<br><small>Icon: ${escapeHTML(item.icon)}</small>` : ""}
+                    ${item.canbosoProductId ? `<br><small>Canboso: ${escapeHTML(item.canbosoProductId)}</small>` : ""}
                 </td>
-                <td>${categoryName(item.categorySlug)}</td>
-                <td>${money(item.price)}</td>
-                <td>${item.stock}</td>
-                <td><span class="status">${item.status}</span></td>
+                <td>${escapeHTML(categoryName(item.categorySlug))}</td>
                 <td>
-                    <div class="row-actions">
-                        <button data-edit-product="${item.id}">Sửa</button>
-                        <button class="danger" data-delete-product="${item.id}">Xóa</button>
+                    ${money(item.price)}${item.oldPrice ? `<br><small>Gi&aacute; c&#361;: ${money(item.oldPrice)}</small>` : ""}
+                    ${item.canbosoCostPrice ? `<br><small>Gốc: ${money(item.canbosoCostPrice)}</small>` : ""}
+                    ${item.canbosoMarkup ? `<br><small>Markup: ${money(item.canbosoMarkup)}</small>` : ""}
+                </td>
+                <td>${Number(item.stock || 0)}</td>
+                <td>
+                    <span class="status">${escapeHTML(item.status)}</span>
+                    ${item.discount ? `<br><small>${escapeHTML(item.discount)}</small>` : ""}
+                </td>
+                <td>
+                    <div class="row-actions ${state.authenticated ? "" : "hidden"}">
+                        <button data-edit-product="${escapeHTML(item.id)}">S&#7917;a</button>
+                        <button class="danger" data-delete-product="${escapeHTML(item.id)}">X&oacute;a</button>
                     </div>
                 </td>
             </tr>
         `)
         .join("");
+
+    $("#productsTable").querySelectorAll("[data-admin-product-image]").forEach((image) => {
+        image.addEventListener("error", () => {
+            image.src = "assets/images/storetainguyen-logo.png";
+            image.classList.add("image-fallback");
+        }, { once: true });
+    });
 }
 
 function renderCategories() {
     $("#categoriesTable").innerHTML = state.categories
         .map((item) => `
             <tr>
-                <td><strong>${item.name}</strong><br><small>${item.description || ""}</small></td>
-                <td>${item.slug}</td>
-                <td><span class="status">${item.status}</span></td>
+                <td><strong>${escapeHTML(item.name)}</strong><br><small>${escapeHTML(item.description || "")}</small></td>
+                <td>${escapeHTML(item.slug)}</td>
+                <td><span class="status">${escapeHTML(item.status)}</span></td>
                 <td>
-                    <div class="row-actions">
-                        <button data-edit-category="${item.id}">Sửa</button>
-                        <button class="danger" data-delete-category="${item.id}">Xóa</button>
+                    <div class="row-actions ${state.authenticated ? "" : "hidden"}">
+                        <button data-edit-category="${escapeHTML(item.id)}">S&#7917;a</button>
+                        <button class="danger" data-delete-category="${escapeHTML(item.id)}">X&oacute;a</button>
                     </div>
                 </td>
             </tr>
@@ -103,12 +183,12 @@ function renderOrders() {
     $("#ordersTable").innerHTML = state.orders
         .map((item) => `
             <tr>
-                <td><strong>${item.customerName || "-"}</strong><br><small>${item.customerPhone || ""}</small></td>
-                <td>${productName(item.productId)} x ${item.quantity}</td>
-                <td>${money(item.total)}</td>
+                <td><strong>${escapeHTML(item.id || "-")}</strong><br><small>${escapeHTML(item.telegramUsername || item.customerName || item.customerPhone || "")}</small></td>
+                <td>${escapeHTML(item.productName || productName(item.productId))} x ${Number(item.quantity || 1)}${item.canbosoFulfillmentStatus ? `<br><small>Canboso: ${escapeHTML(item.canbosoFulfillmentStatus)}</small>` : ""}</td>
+                <td>${money(item.total)}${item.costTotal ? `<br><small>Gốc: ${money(item.costTotal)}</small>` : ""}${item.profitTotal ? `<br><small>Lãi: ${money(item.profitTotal)}</small>` : ""}</td>
                 <td>
-                    <select data-order-status="${item.id}">
-                        ${["pending", "paid", "delivered", "cancelled"].map((status) => `
+                    <select data-order-status="${escapeHTML(item.id)}">
+                        ${["created", "pending", "paid", "delivered", "failed", "cancelled"].map((status) => `
                             <option value="${status}" ${status === item.status ? "selected" : ""}>${status}</option>
                         `).join("")}
                     </select>
@@ -121,15 +201,16 @@ function renderOrders() {
 
 async function loadAll() {
     const [summary, categories, products, orders] = await Promise.all([
-        api("/api/summary"),
-        api("/api/categories"),
-        api("/api/products"),
-        api("/api/orders")
+        api("/api/admin/summary"),
+        api("/api/admin/categories"),
+        api("/api/admin/products"),
+        api("/api/admin/orders")
     ]);
 
     state.categories = categories;
     state.products = products;
     state.orders = orders;
+    setAuthenticated(true);
 
     renderStats(summary);
     fillCategorySelect();
@@ -141,13 +222,14 @@ async function loadAll() {
 async function loadPublicData() {
     const [summary, categories, products] = await Promise.all([
         api("/api/summary"),
-        api("/api/categories"),
-        api("/api/products")
+        api("/api/public/categories"),
+        api("/api/public/products")
     ]);
 
     state.categories = categories;
     state.products = products;
     state.orders = [];
+    setAuthenticated(false);
 
     renderStats(summary);
     fillCategorySelect();
@@ -156,19 +238,39 @@ async function loadPublicData() {
     renderOrders();
 }
 
+function updateProductPreview() {
+    const image = $("#productImage").value.trim();
+    const icon = $("#productIcon").value.trim();
+    const imagePreview = $("#productImagePreview");
+    const iconPreview = $("#productIconPreview");
+
+    imagePreview.src = image;
+    iconPreview.src = icon || image;
+    imagePreview.classList.toggle("hidden", !image);
+    iconPreview.classList.toggle("hidden", !(icon || image));
+}
+
 function resetProductForm(product = {}) {
     $("#productId").value = product.id || "";
     $("#productName").value = product.name || "";
     $("#productSlug").value = product.slug || "";
     $("#productCategory").value = product.categorySlug || state.categories[0]?.slug || "";
     $("#productImage").value = product.image || "";
+    $("#productIcon").value = product.icon || "";
+    $("#productDiscount").value = product.discount || "";
     $("#productPrice").value = product.price || 0;
     $("#productOldPrice").value = product.oldPrice || "";
+    $("#productCanbosoProductId").value = product.canbosoProductId || "";
+    $("#productCanbosoCostPrice").value = product.canbosoCostPrice || "";
+    $("#productCanbosoMarkup").value = product.canbosoMarkup || "";
+    $("#productCanbosoSlotMonths").value = product.canbosoSlotMonths || "";
+    $("#productRequiresCustomerEmail").checked = Boolean(product.requiresCustomerEmail);
     $("#productStock").value = product.stock || 0;
     $("#productRating").value = product.rating || 4.6;
     $("#productSold").value = product.sold || 0;
     $("#productStatus").value = product.status || "active";
     $("#productDescription").value = product.description || "";
+    updateProductPreview();
     $("#productForm").classList.remove("hidden");
 }
 
@@ -187,8 +289,15 @@ function productPayload() {
         slug: $("#productSlug").value,
         categorySlug: $("#productCategory").value,
         image: $("#productImage").value,
+        icon: $("#productIcon").value,
+        discount: $("#productDiscount").value,
         price: Number($("#productPrice").value),
         oldPrice: $("#productOldPrice").value,
+        canbosoProductId: $("#productCanbosoProductId").value,
+        canbosoCostPrice: $("#productCanbosoCostPrice").value,
+        canbosoMarkup: $("#productCanbosoMarkup").value,
+        canbosoSlotMonths: $("#productCanbosoSlotMonths").value,
+        requiresCustomerEmail: $("#productRequiresCustomerEmail").checked,
         stock: Number($("#productStock").value),
         rating: Number($("#productRating").value),
         sold: Number($("#productSold").value),
@@ -211,19 +320,37 @@ function bindEvents() {
 
     $("#loginForm").addEventListener("submit", async (event) => {
         event.preventDefault();
-        const result = await api("/api/auth/login", {
-            method: "POST",
-            body: JSON.stringify({
-                username: $("#adminUsername").value.trim(),
-                password: $("#adminPassword").value
-            })
-        });
-        state.authToken = result.token;
-        localStorage.setItem("adminSession", result.token);
-        localStorage.setItem("adminUsername", result.user.username);
-        $("#adminPassword").value = "";
-        toast(`Đã đăng nhập: ${result.user.name}`);
-        await loadAll();
+
+        try {
+            const result = await api("/api/auth/login", {
+                method: "POST",
+                body: JSON.stringify({
+                    username: $("#adminUsername").value.trim(),
+                    password: $("#adminPassword").value
+                })
+            });
+
+            if (result.user.role !== "admin") {
+                throw new Error("Tài khoản này không có quyền admin.");
+            }
+
+            localStorage.setItem("adminUsername", result.user.username);
+            $("#adminPassword").value = "";
+            setAuthenticated(true);
+            toast(`\u0110\u00e3 \u0111\u0103ng nh\u1eadp: ${result.user.name}`);
+            await loadAll();
+        } catch (error) {
+            handleError(error);
+        }
+    });
+
+    $("#adminLogoutButton").addEventListener("click", async () => {
+        try {
+            await api("/api/auth/logout", { method: "POST" });
+        } catch {}
+        clearAdminSession();
+        await loadPublicData();
+        toast("\u0110\u00e3 \u0111\u0103ng xu\u1ea5t.");
     });
 
     document.querySelectorAll(".admin-nav").forEach((button) => {
@@ -239,29 +366,42 @@ function bindEvents() {
     $("#cancelProductButton").addEventListener("click", () => $("#productForm").classList.add("hidden"));
     $("#newCategoryButton").addEventListener("click", () => resetCategoryForm());
     $("#cancelCategoryButton").addEventListener("click", () => $("#categoryForm").classList.add("hidden"));
+    $("#productSearch")?.addEventListener("input", renderProducts);
+    $("#productImage")?.addEventListener("input", updateProductPreview);
+    $("#productIcon")?.addEventListener("input", updateProductPreview);
 
     $("#productForm").addEventListener("submit", async (event) => {
         event.preventDefault();
-        const id = $("#productId").value;
-        await api(id ? `/api/products/${id}` : "/api/products", {
-            method: id ? "PUT" : "POST",
-            body: JSON.stringify(productPayload())
-        });
-        $("#productForm").classList.add("hidden");
-        toast("Đã lưu sản phẩm.");
-        await loadAll();
+
+        try {
+            const id = $("#productId").value;
+            await api(id ? `/api/admin/products/${id}` : "/api/admin/products", {
+                method: id ? "PUT" : "POST",
+                body: JSON.stringify(productPayload())
+            });
+            $("#productForm").classList.add("hidden");
+            toast("\u0110\u00e3 l\u01b0u s\u1ea3n ph\u1ea9m.");
+            await loadAll();
+        } catch (error) {
+            handleError(error);
+        }
     });
 
     $("#categoryForm").addEventListener("submit", async (event) => {
         event.preventDefault();
-        const id = $("#categoryId").value;
-        await api(id ? `/api/categories/${id}` : "/api/categories", {
-            method: id ? "PUT" : "POST",
-            body: JSON.stringify(categoryPayload())
-        });
-        $("#categoryForm").classList.add("hidden");
-        toast("Đã lưu danh mục.");
-        await loadAll();
+
+        try {
+            const id = $("#categoryId").value;
+            await api(id ? `/api/admin/categories/${id}` : "/api/admin/categories", {
+                method: id ? "PUT" : "POST",
+                body: JSON.stringify(categoryPayload())
+            });
+            $("#categoryForm").classList.add("hidden");
+            toast("\u0110\u00e3 l\u01b0u danh m\u1ee5c.");
+            await loadAll();
+        } catch (error) {
+            handleError(error);
+        }
     });
 
     document.body.addEventListener("click", async (event) => {
@@ -274,20 +414,28 @@ function bindEvents() {
             resetProductForm(state.products.find((item) => item.id === editProductId));
         }
 
-        if (deleteProductId && confirm("Xóa sản phẩm này?")) {
-            await api(`/api/products/${deleteProductId}`, { method: "DELETE" });
-            toast("Đã xóa sản phẩm.");
-            await loadAll();
+        if (deleteProductId && confirm("X\u00f3a s\u1ea3n ph\u1ea9m n\u00e0y?")) {
+            try {
+                await api(`/api/admin/products/${deleteProductId}`, { method: "DELETE" });
+                toast("\u0110\u00e3 x\u00f3a s\u1ea3n ph\u1ea9m.");
+                await loadAll();
+            } catch (error) {
+                handleError(error);
+            }
         }
 
         if (editCategoryId) {
             resetCategoryForm(state.categories.find((item) => item.id === editCategoryId));
         }
 
-        if (deleteCategoryId && confirm("Xóa danh mục này?")) {
-            await api(`/api/categories/${deleteCategoryId}`, { method: "DELETE" });
-            toast("Đã xóa danh mục.");
-            await loadAll();
+        if (deleteCategoryId && confirm("X\u00f3a danh m\u1ee5c n\u00e0y?")) {
+            try {
+                await api(`/api/admin/categories/${deleteCategoryId}`, { method: "DELETE" });
+                toast("\u0110\u00e3 x\u00f3a danh m\u1ee5c.");
+                await loadAll();
+            } catch (error) {
+                handleError(error);
+            }
         }
     });
 
@@ -296,14 +444,34 @@ function bindEvents() {
 
         if (!orderId) return;
 
-        await api(`/api/orders/${orderId}`, {
-            method: "PUT",
-            body: JSON.stringify({ status: event.target.value })
-        });
-        toast("Đã cập nhật đơn hàng.");
-        await loadAll();
+        try {
+            await api(`/api/admin/orders/${orderId}`, {
+                method: "PUT",
+                body: JSON.stringify({ status: event.target.value })
+            });
+            toast("\u0110\u00e3 c\u1eadp nh\u1eadt \u0111\u01a1n h\u00e0ng.");
+            await loadAll();
+        } catch (error) {
+            handleError(error);
+        }
     });
 }
 
 bindEvents();
-(state.authToken ? loadAll() : loadPublicData()).catch((error) => toast(error.message));
+
+async function initialize() {
+    try {
+        const user = await api("/api/auth/me");
+
+        if (user.role !== "admin") {
+            throw new Error("T\u00e0i kho\u1ea3n hi\u1ec7n t\u1ea1i kh\u00f4ng c\u00f3 quy\u1ec1n admin.");
+        }
+
+        await loadAll();
+    } catch {
+        clearAdminSession();
+        await loadPublicData();
+    }
+}
+
+initialize().catch(handleError);

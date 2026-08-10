@@ -2,8 +2,8 @@
 
 (function () {
     const state = {
-        token: localStorage.getItem("customerSession") || "",
-        user: null
+        user: null,
+        registrationEnabled: false
     };
 
     const $ = (selector, root = document) => root.querySelector(selector);
@@ -14,7 +14,6 @@
             ...options,
             headers: {
                 "content-type": "application/json",
-                "authorization": state.token ? `Bearer ${state.token}` : "",
                 ...(options.headers || {})
             }
         }).then(async (res) => {
@@ -44,13 +43,10 @@
                     </label>
                     <button class="auth-submit" type="submit">Đăng Nhập</button>
                     <div class="auth-row">
-                        <label class="auth-remember"><input type="checkbox"> Nhớ đăng nhập</label>
-                        <a href="#">Quên mật khẩu?</a>
+                        <a href="contact.html">Quên mật khẩu? Liên hệ hỗ trợ</a>
                     </div>
-                    <div class="auth-sep">HOẶC ĐĂNG NHẬP BẰNG</div>
-                    <button class="auth-google" type="button">Google</button>
                 </form>
-                <div class="auth-register">
+                <div class="auth-register" id="authRegisterPrompt" hidden>
                     <div class="auth-avatar"></div>
                     <strong>Chưa có tài khoản?</strong>
                     <a class="auth-switch" href="register.html">Tạo Tài Khoản</a>
@@ -116,9 +112,7 @@
     }
 
     function saveSession(result) {
-        state.token = result.token;
         state.user = result.user;
-        localStorage.setItem("customerSession", result.token);
         closeAuth();
         updateButtons();
     }
@@ -127,9 +121,7 @@
         try {
             await api("/api/auth/logout", { method: "POST" });
         } catch {}
-        state.token = "";
         state.user = null;
-        localStorage.removeItem("customerSession");
         $("#accountDropdown")?.classList.remove("active");
         updateButtons();
         if (location.pathname.endsWith("account.html")) location.href = "index.html";
@@ -172,13 +164,17 @@
     async function boot() {
         ensureUi();
         bindProfileButtons();
-        if (state.token) {
-            try {
-                state.user = await api("/api/auth/me");
-            } catch {
-                localStorage.removeItem("customerSession");
-                state.token = "";
-            }
+        try {
+            const settings = await api("/api/public/settings");
+            state.registrationEnabled = settings.registrationEnabled === true;
+        } catch {
+            state.registrationEnabled = false;
+        }
+        $("#authRegisterPrompt").hidden = !state.registrationEnabled;
+        try {
+            state.user = await api("/api/auth/me");
+        } catch {
+            state.user = null;
         }
         updateButtons();
         window.KTKAuth = { openAuth, logout, api, state };

@@ -8,7 +8,7 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Đăng ký - Kho Tài Khoản</title>
+    <title>Đăng ký - storetainguyen</title>
 
     <!-- FONT -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,6 +32,7 @@
     >
     <link rel="stylesheet" href="css/auth.css">
     <link rel="stylesheet" href="css/register.css">
+    <link rel="icon" type="image/png" href="assets/images/storetainguyen-logo.png">
 </head>
 
 <body>
@@ -287,8 +288,8 @@
                     >
 
                         <img
-                            src="https://khotaikhoan.net/wp-content/uploads/2025/02/Logo-kho-tai-khoan-moi.png.webp"
-                            alt="Kho Tài Khoản"
+                            src="assets/images/storetainguyen-logo.png"
+                            alt="storetainguyen"
                         >
 
                     </a>
@@ -332,7 +333,7 @@
                         </span>
 
                         <strong>
-                            0865 890 208
+                            0924 356 579
                         </strong>
 
                     </a>
@@ -478,7 +479,13 @@
                             <label>Địa chỉ email *
                                 <input id="registerEmail" type="email" autocomplete="email" required>
                             </label>
-                            <p>Một liên kết để đặt mật khẩu mới sẽ được gửi đến địa chỉ email của bạn.</p>
+                            <label>Mật khẩu *
+                                <input id="registerPassword" type="password" autocomplete="new-password" minlength="12" maxlength="200" required>
+                            </label>
+                            <label>Xác nhận mật khẩu *
+                                <input id="registerPasswordConfirm" type="password" autocomplete="new-password" minlength="12" maxlength="200" required>
+                            </label>
+                            <p>Dùng mật khẩu riêng, không trùng với email, Telegram hoặc các tài khoản khác.</p>
                             <button type="submit">Đăng ký</button>
                         </form>
                     </div>
@@ -518,15 +525,15 @@
                         >
 
                             <img
-                                src="https://khotaikhoan.net/wp-content/uploads/2025/02/Logo-kho-tai-khoan-moi.png.webp"
-                                alt="Kho Tài Khoản"
+                                src="assets/images/storetainguyen-logo.png"
+                                alt="storetainguyen"
                             >
 
                         </a>
 
 
                         <p>
-                            Kho Tài Khoản là đơn vị cung cấp tài khoản,
+                            storetainguyen là đơn vị cung cấp tài khoản,
                             phần mềm bản quyền chính hãng với giá thành
                             tốt nhất.
                         </p>
@@ -596,7 +603,7 @@
                         </h3>
 
                         <a href="#">
-                            Về Kho Tài Khoản
+                            Về storetainguyen
                         </a>
 
                         <a href="#">
@@ -631,27 +638,31 @@
                         </h3>
 
                         <a href="#">
-                            Facebook: Kho Tài Khoản
+                            Facebook: storetainguyen
                         </a>
 
                         <a href="#">
-                            Zalo 1: 0865 890 208
+                            Zalo 1: 0924 356 579
                         </a>
 
                         <a href="#">
-                            Zalo 2: 0856 220 037
+                            Zalo 2: 0924 356 579
                         </a>
 
                         <a href="#">
-                            Hotline 1: 0865 890 208
+                            Hotline 1: 0924 356 579
                         </a>
 
                         <a href="#">
-                            Hotline 2: 0856 220 037
+                            Hotline 2: 0924 356 579
+                        </a>
+
+                        <a href="https://t.me/0924356579" target="_blank" rel="noopener">
+                            Telegram: 0924 356 579
                         </a>
 
                         <a href="#">
-                            Email: Support@khotaikhoan.net
+                            Email: support@storetainguyen.com
                         </a>
 
                     </div>
@@ -711,7 +722,7 @@
                         Copyright © 2024
 
                         <strong>
-                            Kho Tài Khoản.
+                            storetainguyen.
                         </strong>
 
                         All rights reserved.
@@ -742,14 +753,18 @@
     <div class="floating-contact">
 
         <a
-            href="#"
+            href="https://zalo.me/0924356579"
+            target="_blank"
+            rel="noopener"
             class="contact-circle zalo-circle"
         >
             Zalo
         </a>
 
         <a
-            href="#"
+            href="https://t.me/0924356579"
+            target="_blank"
+            rel="noopener"
             class="contact-circle telegram-circle"
         >
             <i class="bi bi-send-fill"></i>
@@ -783,9 +798,9 @@
 
 
     <!-- JS -->
-    <script src="js/sidebar-hover.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/register.js"></script>
+    <script src="js/sidebar-hover.js?v=6"></script>
+    <script src="js/auth.js?v=6"></script>
+    <script src="js/register.js?v=6"></script>
 
 </body>
 </html>

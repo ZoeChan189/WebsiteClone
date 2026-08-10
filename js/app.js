@@ -38,8 +38,12 @@ let educationProducts = {
 };
 
 function formatCurrency(value) {
-    return Number(value || 0).toLocaleString("vi-VN") + "₫";
+    const number = Number(value || 0);
+    const amount = number > 0 && number < 10000 ? number * 1000 : number;
+    return amount.toLocaleString("vi-VN") + "\u0111";
 }
+
+
 
 function formatSold(value) {
     const number = Number(value || 0);
@@ -92,14 +96,46 @@ function buildProductCollections(products) {
     };
 }
 
-async function loadProductFeed() {
-    const response = await fetch("/api/products");
+async function fetchJson(url) {
+    const response = await fetch(url);
 
     if (!response.ok) {
-        throw new Error("Không tải được sản phẩm từ backend.");
+        throw new Error("Không tải được dữ liệu: " + url);
     }
 
-    buildProductCollections(await response.json());
+    return response.json();
+}
+
+function catalogFallbackProducts() {
+    return Object.values(window.PRODUCT_CATALOG || {}).map(product => ({
+        slug: product.slug,
+        name: product.shortName || product.name,
+        categorySlug: product.categorySlug || "cong-cu-ai",
+        image: product.image,
+        discount: product.discount,
+        price: product.price,
+        oldPrice: product.oldPrice,
+        rating: product.rating,
+        sold: product.sold,
+        stock: product.stock
+    }));
+}
+
+async function loadProductFeed() {
+    try {
+        buildProductCollections(await fetchJson("/api/public/products"));
+        return;
+    } catch (apiError) {
+        console.warn(apiError);
+    }
+
+    const fallbackProducts = catalogFallbackProducts();
+
+    if (!fallbackProducts.length) {
+        throw new Error("Không tải được sản phẩm.");
+    }
+
+    buildProductCollections(fallbackProducts);
 }
 
 function renderFedProducts() {
@@ -119,6 +155,12 @@ function productCardTemplate(product, options = {}) {
         flash = false,
         hidden = false
     } = options;
+
+
+    const productHref =
+        product.slug
+            ? `product.html?slug=${encodeURIComponent(product.slug)}`
+            : "#";
 
 
     const discount = flash
@@ -185,11 +227,13 @@ function productCardTemplate(product, options = {}) {
                 </button>
 
 
-                <img
-                    src="${product.image}"
-                    alt="${escapeHTML(product.name)}"
-                    loading="lazy"
-                >
+                <a href="${productHref}">
+                    <img
+                        src="${escapeHTML(product.image)}"
+                        alt="${escapeHTML(product.name)}"
+                        loading="lazy"
+                    >
+                </a>
 
             </div>
 
@@ -197,7 +241,9 @@ function productCardTemplate(product, options = {}) {
             <div class="product-body">
 
                 <h3 class="product-name">
-                    ${escapeHTML(product.name)}
+                    <a href="${productHref}">
+                        ${escapeHTML(product.name)}
+                    </a>
                 </h3>
 
 
@@ -246,7 +292,7 @@ function productCardTemplate(product, options = {}) {
 
                 <a
                     class="product-buy-button"
-                    href="product.html?slug=${encodeURIComponent(product.slug || "")}"
+                    href="${productHref}"
                 >
                     ${flash ? "Mua ngay" : "Chọn gói"}
                 </a>
@@ -457,7 +503,10 @@ const heroSlides = [
             "https://khotaikhoan.net/wp-content/uploads/2026/05/chatgpt-plus-banner.webp",
 
         alt:
-            "ChatGPT Plus"
+            "ChatGPT Plus",
+
+        href:
+            "product.html?slug=chatgpt-plus"
     },
 
     {
@@ -465,7 +514,10 @@ const heroSlides = [
             "https://khotaikhoan.net/wp-content/uploads/2026/05/claude-ai-pro-max-banner.webp",
 
         alt:
-            "Claude AI Pro Max"
+            "Claude AI Pro Max",
+
+        href:
+            "product.html?slug=claude-ai"
     },
 
     {
@@ -473,7 +525,10 @@ const heroSlides = [
             "https://khotaikhoan.net/wp-content/uploads/2026/05/google-ai-pro-banner.webp",
 
         alt:
-            "Google AI Pro"
+            "Google AI Pro",
+
+        href:
+            "product.html?slug=google-ai-pro"
     }
 
 ];
@@ -484,6 +539,9 @@ let heroIndex = 0;
 
 const heroImage =
     $("#heroImage");
+
+const heroMainLink =
+    $("#heroMainLink");
 
 const heroDots =
     $("#heroDots");
@@ -567,6 +625,11 @@ function updateHero() {
 
             heroImage.alt =
                 slide.alt;
+
+            if (heroMainLink) {
+                heroMainLink.href =
+                    slide.href;
+            }
 
             heroImage.style.opacity =
                 "1";
@@ -784,7 +847,7 @@ const reviews = [
 
     {
         text:
-            "Bên khotaikhoan giao tài khoản nhanh, thanh toán xong 2-3 phút là có. Mình mua nhiều lần rồi, lần nào cũng ok.",
+            "Bên storetainguyen hỗ trợ nhanh, quy trình đặt hàng rõ ràng và dễ theo dõi.",
 
         name:
             "Đỗ Văn Nam",
@@ -1180,6 +1243,23 @@ $("#searchForm")
 
             event.preventDefault();
 
+            const input =
+                event.currentTarget.querySelector(
+                    'input[type="search"]'
+                );
+
+            const keyword =
+                input
+                    ?.value
+                    ?.trim();
+
+            if (!keyword) {
+                return;
+            }
+
+            window.location.href =
+                `search.html?q=${encodeURIComponent(keyword)}`;
+
         }
     );
 
@@ -1261,5 +1341,5 @@ document.addEventListener(
 ========================================================== */
 
 console.log(
-    "Kho Tai Khoan UI v2 loaded."
+    "storetainguyen UI v2 loaded."
 );

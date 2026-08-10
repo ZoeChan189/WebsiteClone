@@ -20,7 +20,7 @@ window.CATEGORY_CATALOG = {
         name: "Học tập",
 
         metaTitle:
-            "Tài Khoản Học Tập Giá Rẻ | Kho Tài Khoản",
+            "Tài Khoản Học Tập Giá Rẻ | storetainguyen",
 
         metaDescription:
             "Tài khoản học tập: Duolingo, Quizlet, Udemy, eJOY, Grammarly và nhiều nền tảng khác.",
@@ -31,7 +31,7 @@ window.CATEGORY_CATALOG = {
 
         description: [
 
-            "Danh mục Học tập tại Kho Tài Khoản tổng hợp các tài khoản hỗ trợ học ngoại ngữ, học kỹ năng chuyên môn và tự học trên nền tảng quốc tế như Duolingo Super, eJOY English Pro, Udemy Business và Coursera Plus. Đây là nhóm sản phẩm phù hợp cho người muốn học hiệu quả hơn nhưng vẫn tối ưu chi phí.",
+            "Danh mục Học tập tại storetainguyen tổng hợp các tài khoản hỗ trợ học ngoại ngữ, học kỹ năng chuyên môn và tự học trên các nền tảng quốc tế.",
 
             "Nếu bạn đang phân vân nên mua tài khoản học tập nào, hãy chọn theo mục tiêu cụ thể: học tiếng Anh và phản xạ thì ưu tiên Duolingo hoặc eJOY; học kỹ năng nghề nghiệp và khóa học chuyên sâu thì ưu tiên Udemy Business hoặc Coursera Plus. Category này được tối ưu để giúp bạn chọn đúng nền tảng học thay vì mua theo cảm tính."
 
@@ -415,7 +415,7 @@ window.CATEGORY_CATALOG = {
         name: "Làm việc",
 
         metaTitle:
-            "Tài Khoản Làm Việc Giá Rẻ | Kho Tài Khoản",
+            "Tài Khoản Làm Việc Giá Rẻ | storetainguyen",
 
         metaDescription:
             "Công cụ hỗ trợ thiết kế, viết lách, họp trực tuyến và năng suất.",
@@ -426,7 +426,7 @@ window.CATEGORY_CATALOG = {
 
         description: [
 
-            "Danh mục Làm việc tại Kho Tài Khoản tập hợp các tài khoản hỗ trợ thiết kế, viết lách, họp trực tuyến, lưu trữ dữ liệu và tăng năng suất công việc như Canva Pro, Grammarly Premium, Zoom Pro, Dropbox và OneDrive.",
+            "Danh mục Làm việc tại storetainguyen tập hợp các tài khoản hỗ trợ thiết kế, viết lách, họp trực tuyến, lưu trữ dữ liệu và tăng năng suất.",
 
             "Nếu bạn đang tìm công cụ làm việc giá rẻ nhưng hữu ích thật, hãy chọn theo đúng workflow: Canva cho thiết kế nhanh, Grammarly cho viết tiếng Anh tốt hơn, Zoom cho họp online, Dropbox và OneDrive cho lưu trữ và chia sẻ file."
 
@@ -736,7 +736,7 @@ window.CATEGORY_CATALOG = {
         name: "Giải trí",
 
         metaTitle:
-            "Tài Khoản Giải Trí Giá Rẻ | Kho Tài Khoản",
+            "Tài Khoản Giải Trí Giá Rẻ | storetainguyen",
 
         metaDescription:
             "Các tài khoản giải trí như HBO, Tidal, Disney+, Prime Video và nhiều dịch vụ khác.",
@@ -1000,7 +1000,7 @@ window.CATEGORY_CATALOG = {
         name: "VPN",
 
         metaTitle:
-            "Tài Khoản VPN Giá Rẻ | Kho Tài Khoản",
+            "Tài Khoản VPN Giá Rẻ | storetainguyen",
 
         metaDescription:
             "Tài khoản VPN giúp bảo vệ kết nối và quyền riêng tư.",
@@ -1264,7 +1264,7 @@ window.CATEGORY_CATALOG = {
         name: "Lưu trữ",
 
         metaTitle:
-            "Tài Khoản Lưu Trữ Đám Mây | Kho Tài Khoản",
+            "Tài Khoản Lưu Trữ Đám Mây | storetainguyen",
 
         metaDescription:
             "Google One, OneDrive và Dropbox.",
@@ -1357,7 +1357,7 @@ window.CATEGORY_CATALOG = {
         name: "Anti Virus",
 
         metaTitle:
-            "Phần Mềm Diệt Virus Bản Quyền | Kho Tài Khoản",
+            "Phần Mềm Diệt Virus Bản Quyền | storetainguyen",
 
         metaDescription:
             "Phần mềm bảo mật và diệt virus bản quyền.",
@@ -1488,7 +1488,7 @@ window.CATEGORY_CATALOG = {
         name: "Công Cụ AI",
 
         metaTitle:
-            "Công Cụ AI | Kho Tài Khoản",
+            "Công Cụ AI | storetainguyen",
 
         metaDescription:
             "ChatGPT, Claude, Google AI, Cursor và các công cụ AI.",
@@ -1753,7 +1753,7 @@ window.CATEGORY_CATALOG = {
             "Ứng dụng & Phần mềm khác",
 
         metaTitle:
-            "Ứng Dụng & Phần Mềm Bản Quyền | Kho Tài Khoản",
+            "Ứng Dụng & Phần Mềm Bản Quyền | storetainguyen",
 
         metaDescription:
             "Ứng dụng và phần mềm bản quyền đa dạng.",

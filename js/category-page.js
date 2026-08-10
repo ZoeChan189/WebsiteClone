@@ -194,37 +194,13 @@ if (!category) {
         item
     ) {
 
-        /*
-         * Nếu sản phẩm đã tồn tại
-         * trong PRODUCT_CATALOG
-         * thì mở trang product dynamic.
-         */
-
-        if (
-            window.PRODUCT_CATALOG
-            &&
-            window.PRODUCT_CATALOG[
+        return (
+            "product.html?slug="
+            +
+            encodeURIComponent(
                 item.slug
-            ]
-        ) {
-
-            return (
-                "product.html?slug="
-                +
-                encodeURIComponent(
-                    item.slug
-                )
-            );
-
-        }
-
-
-        /*
-         * Nếu chưa có product data,
-         * không cho nhảy sang một trang sai.
-         */
-
-        return "#";
+            )
+        );
 
     }
 
@@ -241,7 +217,7 @@ if (!category) {
             (
                 category.name
                 +
-                " | Kho Tài Khoản"
+                " | storetainguyen"
             );
 
 
@@ -1310,6 +1286,301 @@ if (!category) {
     }
 
 
+    function buildGenericBottom() {
+
+        const slug =
+            category.slug || "";
+
+        const baseTitle =
+            "Chọn đúng sản phẩm trong nhóm " + category.name;
+
+        const presets = {
+            "cong-cu-ai": {
+                intro:
+                    "Nhóm công cụ AI phù hợp cho viết nội dung, học tập, nghiên cứu, lập trình, thiết kế ảnh/video và tự động hóa công việc. Hãy chọn theo nhu cầu chính thay vì chỉ nhìn giá.",
+                items: [
+                    {
+                        chip:
+                            "Viết & nghiên cứu",
+                        title:
+                            "ChatGPT, Claude, Google AI",
+                        text:
+                            "Phù hợp khi cần trợ lý AI để viết, tóm tắt, phân tích tài liệu, brainstorm và xử lý công việc hằng ngày."
+                    },
+                    {
+                        chip:
+                            "Lập trình",
+                        title:
+                            "Cursor, AI code assistant",
+                        text:
+                            "Dành cho dev hoặc người học code cần gợi ý, sửa lỗi, refactor và tăng tốc quy trình làm việc."
+                    },
+                    {
+                        chip:
+                            "Sáng tạo",
+                        title:
+                            "Kling, Krea, Invideo, Canva",
+                        text:
+                            "Hợp với creator, designer, marketer và seller cần tạo ảnh, video, template hoặc nội dung nhanh hơn."
+                    }
+                ],
+                posts: [
+                    {
+                        title:
+                            "Nên mua công cụ AI nào nếu mới bắt đầu?",
+                        text:
+                            "Nếu cần đa năng hãy bắt đầu với ChatGPT; nếu xử lý văn bản dài chọn Claude; nếu thiết kế hoặc video hãy chọn nhóm sáng tạo."
+                    },
+                    {
+                        title:
+                            "Dùng chung hay dùng riêng?",
+                        text:
+                            "Dùng chung tiết kiệm hơn, còn dùng riêng phù hợp khi làm việc với dữ liệu cá nhân hoặc cần ổn định lâu dài."
+                    }
+                ]
+            },
+            "giai-tri": {
+                intro:
+                    "Danh mục giải trí gồm tài khoản xem phim, nghe nhạc, anime, thể thao và cộng đồng. Mỗi nền tảng có nội dung, thiết bị hỗ trợ và chính sách dùng khác nhau.",
+                items: [
+                    {
+                        chip:
+                            "Xem phim",
+                        title:
+                            "Netflix, HBO Max, Disney+, Prime Video",
+                        text:
+                            "Phù hợp cho phim, series, nội dung gia đình, hoạt hình hoặc nội dung quốc tế."
+                    },
+                    {
+                        chip:
+                            "Âm nhạc",
+                        title:
+                            "Spotify, Apple Music",
+                        text:
+                            "Dành cho người nghe nhạc thường xuyên, cần playlist, podcast và trải nghiệm ít gián đoạn."
+                    },
+                    {
+                        chip:
+                            "Cộng đồng",
+                        title:
+                            "Discord Nitro, Crunchyroll",
+                        text:
+                            "Phù hợp cho game thủ, fan anime hoặc người sinh hoạt nhiều trong các cộng đồng online."
+                    }
+                ],
+                posts: [
+                    {
+                        title:
+                            "Chọn nền tảng xem phim theo nhu cầu",
+                        text:
+                            "Disney+ hợp nội dung gia đình/Marvel; HBO Max mạnh về series; Prime Video phù hợp phim quốc tế; Crunchyroll dành cho anime."
+                    },
+                    {
+                        title:
+                            "Lưu ý khi dùng tài khoản giải trí",
+                        text:
+                            "Nên đọc kỹ thiết bị hỗ trợ, số màn hình, vùng khả dụng và điều kiện bảo hành trước khi mua."
+                    }
+                ]
+            },
+            "vpn": {
+                intro:
+                    "VPN giúp mã hóa kết nối, ẩn IP và truy cập Internet linh hoạt hơn. Mỗi dịch vụ khác nhau về tốc độ, số thiết bị, vị trí máy chủ và độ ổn định.",
+                items: [
+                    {
+                        chip:
+                            "Tốc độ",
+                        title:
+                            "NordVPN, ExpressVPN, Surfshark",
+                        text:
+                            "Phù hợp khi cần kết nối ổn định, nhiều máy chủ và dùng trên nhiều thiết bị."
+                    },
+                    {
+                        chip:
+                            "Chi phí",
+                        title:
+                            "PIA VPN, HMA, PureVPN",
+                        text:
+                            "Lựa chọn hợp lý nếu muốn dùng VPN cơ bản với ngân sách tiết kiệm."
+                    },
+                    {
+                        chip:
+                            "Riêng tư",
+                        title:
+                            "Mullvad, CyberGhost",
+                        text:
+                            "Phù hợp người ưu tiên sự riêng tư, bảo vệ kết nối Wi-Fi công cộng hoặc làm việc từ xa."
+                    }
+                ],
+                posts: [
+                    {
+                        title:
+                            "VPN có dùng để bảo mật tuyệt đối không?",
+                        text:
+                            "VPN giúp tăng riêng tư nhưng không thay thế thói quen bảo mật như mật khẩu mạnh, 2FA và tránh link lạ."
+                    },
+                    {
+                        title:
+                            "Nên chọn VPN theo tiêu chí nào?",
+                        text:
+                            "Hãy cân nhắc số thiết bị, tốc độ, quốc gia máy chủ, thời hạn gói và chính sách bảo hành."
+                    }
+                ]
+            },
+            "hoc-tap": {
+                intro:
+                    "Tài khoản học tập hỗ trợ ngoại ngữ, ghi nhớ kiến thức, khóa học, viết học thuật và luyện kỹ năng. Nên chọn nền tảng theo mục tiêu học trong 1-3 tháng tới.",
+                items: [
+                    {
+                        chip:
+                            "Ngoại ngữ",
+                        title:
+                            "ELSA, Duolingo, Quizlet",
+                        text:
+                            "Phù hợp luyện từ vựng, phát âm, ghi nhớ và duy trì thói quen học mỗi ngày."
+                    },
+                    {
+                        chip:
+                            "Khóa học",
+                        title:
+                            "Udemy, Coursera, Skillshare",
+                        text:
+                            "Dành cho người cần học kỹ năng mới, lấy tài liệu chuyên môn hoặc học theo lộ trình."
+                    },
+                    {
+                        chip:
+                            "Viết & kiểm tra",
+                        title:
+                            "Grammarly, QuillBot, Turnitin",
+                        text:
+                            "Hỗ trợ viết tiếng Anh, diễn đạt, kiểm tra nội dung và chỉnh sửa bài học thuật."
+                    }
+                ],
+                posts: [
+                    {
+                        title:
+                            "Quizlet Plus phù hợp với ai?",
+                        text:
+                            "Phù hợp người học ngoại ngữ, ôn thi, cần flashcard và chế độ học lặp lại có hệ thống."
+                    },
+                    {
+                        title:
+                            "Làm sao chọn tài khoản học tập không lãng phí?",
+                        text:
+                            "Chọn theo môn đang học, thời lượng học mỗi tuần và thiết bị bạn dùng thường xuyên."
+                    }
+                ]
+            },
+            "luu-tru": {
+                intro:
+                    "Nhóm lưu trữ giúp tăng dung lượng cho ảnh, tài liệu, email và dữ liệu làm việc. Trước khi mua nên xác định dung lượng cần dùng và tài khoản cần nâng cấp.",
+                items: [
+                    {
+                        chip:
+                            "Google",
+                        title:
+                            "Google One, Google Drive",
+                        text:
+                            "Phù hợp người dùng Gmail, Google Photos và Drive hằng ngày."
+                    },
+                    {
+                        chip:
+                            "Microsoft",
+                        title:
+                            "OneDrive",
+                        text:
+                            "Phù hợp người dùng Office, Windows và lưu tài liệu làm việc."
+                    },
+                    {
+                        chip:
+                            "Đồng bộ",
+                        title:
+                            "Dropbox",
+                        text:
+                            "Hợp với nhu cầu đồng bộ file nhanh giữa nhiều thiết bị và chia sẻ cho đội nhóm."
+                    }
+                ],
+                posts: [
+                    {
+                        title:
+                            "Nên chuẩn bị gì trước khi nâng cấp dung lượng?",
+                        text:
+                            "Chuẩn bị đúng email cần nâng cấp và kiểm tra dung lượng hiện tại trước khi tạo đơn."
+                    }
+                ]
+            }
+        };
+
+        const preset =
+            presets[slug];
+
+        if (!preset) {
+            return {
+                type:
+                    "picks",
+                title:
+                    baseTitle,
+                intro:
+                    "Mỗi sản phẩm có gói, thời hạn, điều kiện sử dụng và bảo hành riêng. Hãy xem kỹ trang chi tiết trước khi đặt hàng.",
+                items: [
+                    {
+                        chip:
+                            "Gói dùng chung",
+                        title:
+                            "Tối ưu chi phí",
+                        text:
+                            "Phù hợp khi muốn trải nghiệm dịch vụ với ngân sách thấp."
+                    },
+                    {
+                        chip:
+                            "Gói dùng riêng",
+                        title:
+                            "Ổn định hơn",
+                        text:
+                            "Phù hợp khi sử dụng thường xuyên hoặc cần tài khoản riêng."
+                    },
+                    {
+                        chip:
+                            "Nâng cấp chính chủ",
+                        title:
+                            "Dùng trên tài khoản của bạn",
+                        text:
+                            "Phù hợp khi muốn giữ dữ liệu và lịch sử trên tài khoản cá nhân."
+                    }
+                ],
+                cta: {
+                    title:
+                        "Cần tư vấn chọn gói?",
+                    html:
+                        'Nhắn <a href="https://zalo.me/0924356579" target="_blank" rel="noopener">Zalo</a> hoặc <a href="https://t.me/0924356579" target="_blank" rel="noopener">Telegram</a> để được hỗ trợ.'
+                }
+            };
+        }
+
+        return {
+            type:
+                "picks",
+            title:
+                baseTitle,
+            intro:
+                preset.intro,
+            items:
+                preset.items,
+            postsTitle:
+                "Gợi ý & câu hỏi thường gặp",
+            posts:
+                preset.posts,
+            cta: {
+                title:
+                    "Chưa chắc nên chọn sản phẩm nào?",
+                html:
+                    'Gửi nhu cầu qua <a href="https://zalo.me/0924356579" target="_blank" rel="noopener">Zalo</a> hoặc <a href="https://t.me/0924356579" target="_blank" rel="noopener">Telegram</a>, shop sẽ gợi ý gói phù hợp.'
+            }
+        };
+
+    }
+
+
     /* =====================================================
        RENDER BOTTOM
     ===================================================== */
@@ -1328,7 +1599,9 @@ if (!category) {
 
 
         const bottom =
-            category.bottom;
+            category.bottom
+            ||
+            buildGenericBottom();
 
 
         if (
@@ -1858,10 +2131,8 @@ if (!category) {
                 }
 
 
-                console.log(
-                    "SEARCH:",
-                    keyword
-                );
+                window.location.href =
+                    `search.html?q=${encodeURIComponent(keyword)}`;
 
             }
         );

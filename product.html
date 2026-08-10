@@ -9,7 +9,7 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Chi tiết sản phẩm | Kho Tài Khoản</title>
+    <title>Chi tiết sản phẩm | storetainguyen</title>
 
     <meta
         name="description"
@@ -42,15 +42,21 @@
     <!-- COMMON UI -->
     <link
         rel="stylesheet"
-        href="css/style.css"
+        href="css/style.css?v=4"
     >
 
     <!-- PRODUCT PAGE -->
     <link
         rel="stylesheet"
-        href="css/product.css"
+        href="css/product.css?v=4"
+    >
+
+    <link
+        rel="stylesheet"
+        href="css/cart.css?v=4"
     >
     <link rel="stylesheet" href="css/auth.css">
+    <link rel="icon" type="image/png" href="assets/images/storetainguyen-logo.png">
 </head>
 
 
@@ -77,7 +83,7 @@
             <a
                 href="index.html#ai-products"
                 class="rail-link"
-                title="Công cụ AI"
+                title="C&ocirc;ng c&#7909; AI"
             >
                 <i class="bi bi-robot"></i>
             </a>
@@ -297,8 +303,8 @@
                         class="brand-logo"
                     >
                         <img
-                            src="https://khotaikhoan.net/wp-content/uploads/2025/02/Logo-kho-tai-khoan-moi.png.webp"
-                            alt="Kho Tài Khoản"
+                            src="assets/images/storetainguyen-logo.png"
+                            alt="storetainguyen"
                         >
                     </a>
 
@@ -334,7 +340,7 @@
                         </span>
 
                         <strong>
-                            0865 890 208
+                            0924 356 579
                         </strong>
 
                     </a>
@@ -375,7 +381,7 @@
                         </button>
 
 
-                        <a href="index.html#commitments">
+                        <a href="about.html">
 
                             <span class="nav-mini-icon">
                                 <i class="bi bi-info-circle-fill"></i>
@@ -386,7 +392,7 @@
                         </a>
 
 
-                        <a href="index.html#buy-process">
+                        <a href="guide.html">
 
                             <span class="nav-mini-icon">
                                 <i class="bi bi-bag-check-fill"></i>
@@ -397,7 +403,7 @@
                         </a>
 
 
-                        <a href="#">
+                        <a href="blog.html">
 
                             <span class="nav-mini-icon">
                                 <i class="bi bi-newspaper"></i>
@@ -438,6 +444,8 @@
                         <button
                             class="header-action cart-action"
                             type="button"
+                            data-cart-open
+                            aria-label="Giỏ hàng"
                         >
 
                             <i class="bi bi-cart3"></i>
@@ -764,6 +772,55 @@
                             × &nbsp; Xóa
                         </button>
 
+                        <section
+                            class="upgrade-info-card"
+                            id="upgradeInfoCard"
+                        >
+
+                            <div class="upgrade-info-heading">
+                                <span>
+                                    <i class="bi bi-bag"></i>
+                                </span>
+
+                                <h2>
+                                    Th&ocirc;ng tin c&#7847;n n&acirc;ng c&#7845;p
+                                </h2>
+                            </div>
+
+                            <label
+                                class="upgrade-label"
+                                for="upgradeAccountInput"
+                            >
+                                Email ho&#7863;c t&ecirc;n &#273;&#259;ng nh&#7853;p
+                            </label>
+
+                            <div class="upgrade-input-wrap">
+                                <i class="bi bi-person"></i>
+
+                                <input
+                                    id="upgradeAccountInput"
+                                    type="text"
+                                    placeholder="ten@gmail.com"
+                                    autocomplete="off"
+                                >
+                            </div>
+
+                            <label class="private-account-check">
+                                <input
+                                    type="checkbox"
+                                    id="privateAccount"
+                                    checked
+                                >
+
+                                <span>
+                                    T&ocirc;i kh&ocirc;ng c&oacute; t&agrave;i kho&#7843;n, h&atilde;y c&#7845;p t&agrave;i kho&#7843;n ri&ecirc;ng t&#432; cho t&ocirc;i
+                                </span>
+
+                                <i class="bi bi-question-circle-fill"></i>
+                            </label>
+
+                        </section>
+
 
                         <!-- =====================================
                              CART
@@ -799,6 +856,7 @@
                                 class="add-cart-button"
                                 id="addCartButton"
                                 type="button"
+                                data-add-to-cart
                             >
                                 Thêm Vào Giỏ Hàng
                             </button>
@@ -1172,15 +1230,15 @@
                         >
 
                             <img
-                                src="https://khotaikhoan.net/wp-content/uploads/2025/02/Logo-kho-tai-khoan-moi.png.webp"
-                                alt="Kho Tài Khoản"
+                                src="assets/images/storetainguyen-logo.png"
+                                alt="storetainguyen"
                             >
 
                         </a>
 
 
                         <p>
-                            Kho Tài Khoản là đơn vị cung cấp tài khoản,
+                            storetainguyen là đơn vị cung cấp tài khoản,
                             phần mềm bản quyền chính hãng với giá thành tốt nhất.
                         </p>
 
@@ -1244,27 +1302,27 @@
                             Giới thiệu
                         </h3>
 
-                        <a href="#">
-                            Về Kho Tài Khoản
+                        <a href="index.html">
+                            Về storetainguyen
                         </a>
 
-                        <a href="#">
+                        <a href="faq.html">
                             Điều khoản dịch vụ
                         </a>
 
-                        <a href="#">
+                        <a href="faq.html">
                             Chính sách bảo mật
                         </a>
 
-                        <a href="#">
+                        <a href="warranty.html">
                             Chính sách Cookies
                         </a>
 
-                        <a href="#">
+                        <a href="contact.html">
                             Bảo hành và hoàn tiền
                         </a>
 
-                        <a href="#">
+                        <a href="contact.html">
                             Hình thức thanh toán
                         </a>
 
@@ -1277,28 +1335,32 @@
                             Kênh liên hệ & Hỗ trợ
                         </h3>
 
-                        <a href="#">
-                            Facebook: Kho Tài Khoản
+                        <a href="contact.html">
+                            Facebook: storetainguyen
+                        </a>
+
+                        <a href="contact.html">
+                            Zalo 1: 0924 356 579
+                        </a>
+
+                        <a href="contact.html">
+                            Zalo 2: 0924 356 579
+                        </a>
+
+                        <a href="contact.html">
+                            Hotline 1: 0924 356 579
                         </a>
 
                         <a href="#">
-                            Zalo 1: 0865 890 208
+                            Hotline 2: 0924 356 579
+                        </a>
+
+                        <a href="https://t.me/0924356579" target="_blank" rel="noopener">
+                            Telegram: 0924 356 579
                         </a>
 
                         <a href="#">
-                            Zalo 2: 0856 220 037
-                        </a>
-
-                        <a href="#">
-                            Hotline 1: 0865 890 208
-                        </a>
-
-                        <a href="#">
-                            Hotline 2: 0856 220 037
-                        </a>
-
-                        <a href="#">
-                            Email: Support@khotaikhoan.net
+                            Email: support@storetainguyen.com
                         </a>
 
                     </div>
@@ -1351,7 +1413,7 @@
 
                     <p>
                         Copyright © 2024
-                        <strong>Kho Tài Khoản.</strong>
+                        <strong>storetainguyen.</strong>
                         All rights reserved.
                     </p>
 
@@ -1371,13 +1433,41 @@
 
 
     <!-- =====================================================
+         MOBILE BOTTOM NAV
+    ====================================================== -->
+
+    <nav class="mobile-bottom-nav">
+
+        <a href="#">
+            <i class="bi bi-heart"></i>
+            <span>Wishlist</span>
+        </a>
+
+        <a
+            href="#"
+            data-cart-open
+        >
+            <i class="bi bi-cart3"></i>
+            <span>Gi? h&agrave;ng</span>
+        </a>
+
+        <a href="blog.html">
+            <i class="bi bi-file-earmark-text"></i>
+            <span>Blog</span>
+        </a>
+
+    </nav>
+
+    <!-- =====================================================
          FLOATING CONTACT
     ====================================================== -->
 
     <div class="floating-contact">
 
         <a
-            href="#"
+            href="https://zalo.me/0924356579"
+            target="_blank"
+            rel="noopener"
             class="contact-circle zalo-circle"
         >
             Zalo
@@ -1385,7 +1475,9 @@
 
 
         <a
-            href="#"
+            href="https://t.me/0924356579"
+            target="_blank"
+            rel="noopener"
             class="contact-circle telegram-circle"
         >
             <i class="bi bi-send-fill"></i>
@@ -1489,10 +1581,13 @@
          JS
     ====================================================== -->
 
-    <script src="js/products.js"></script>
-    <script src="js/product-page.js"></script>
-    <script src="js/sidebar-hover.js"></script>
-    <script src="js/auth.js"></script>
+    <script src="js/products.js?v=5"></script>
+    <script src="js/categories.js?v=5"></script>
+    <script src="js/search-suggest.js?v=1"></script>
+    <script src="js/product-page.js?v=6"></script>
+    <script src="js/sidebar-hover.js?v=6"></script>
+    <script src="js/auth.js?v=6"></script>
+    <script src="js/cart.js?v=6"></script>
 
 </body>
 

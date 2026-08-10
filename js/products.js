@@ -504,7 +504,7 @@ window.PRODUCT_CATALOG = {
                     "heading",
 
                 text:
-                    "Bảng giá ChatGPT Plus tại Kho Tài Khoản cập nhật 7/2026",
+                    "Bảng giá ChatGPT Plus tại storetainguyen",
 
                 toc:
                     true
@@ -1230,7 +1230,7 @@ window.PRODUCT_CATALOG = {
                     "heading",
 
                 text:
-                    "Bảo hành & chính sách tại Kho Tài Khoản",
+                    "Bảo hành & chính sách tại storetainguyen",
 
                 toc:
                     true
@@ -1267,7 +1267,7 @@ window.PRODUCT_CATALOG = {
             {
 
                 question:
-                    "Mua ChatGPT Plus ở Kho Tài Khoản có dùng được tại Việt Nam không?",
+                    "Mua ChatGPT Plus ở storetainguyen có dùng được tại Việt Nam không?",
 
                 answer:
                     "Trang tham chiếu mô tả rằng tài khoản được giao có thể đăng nhập và sử dụng tại Việt Nam; hãy đọc điều kiện của biến thể trước khi mua."
@@ -1832,6 +1832,328 @@ window.PRODUCT_CATALOG = {
 
             }
 
+        ]
+
+    },
+
+
+    "canva-pro": {
+
+        slug:
+            "canva-pro",
+
+        name:
+            "Tài khoản Canva Pro",
+
+        shortName:
+            "Canva Pro",
+
+        metaTitle:
+            "Mua Canva Pro Giá Rẻ — Chính Chủ",
+
+        categoryPath: [
+            {
+                name:
+                    "Trang chủ",
+                url:
+                    "index.html"
+            },
+            {
+                name:
+                    "Công cụ thiết kế",
+                url:
+                    "category.html?slug=cong-cu-ai"
+            }
+        ],
+
+        image:
+            "https://khotaikhoan.net/wp-content/uploads/2026/05/canva-pro-800x800.webp",
+
+        discount:
+            "-75%",
+
+        rating:
+            4.6,
+
+        reviewCount:
+            1248,
+
+        satisfiedCount:
+            1198,
+
+        sold:
+            5400,
+
+        highRated:
+            true,
+
+        recentSale: {
+            name:
+                "An",
+            time:
+                "3 phút trước"
+        },
+
+        deal: {
+            enabled:
+                true,
+            soldPercent:
+                64,
+            remaining:
+                288,
+            countdownSeconds:
+                9 * 86400 + 8 * 3600 + 25 * 60
+        },
+
+        variantTitle:
+            "Loại gói:",
+
+        variants: [
+            {
+                id:
+                    "private",
+                label:
+                    "Dùng riêng",
+                available:
+                    true,
+                durations: [
+                    {
+                        id:
+                            "12m",
+                        label:
+                            "12 tháng",
+                        price:
+                            189050,
+                        oldPrice:
+                            479000
+                    },
+                    {
+                        id:
+                            "6m",
+                        label:
+                            "6 tháng",
+                        price:
+                            119000,
+                        oldPrice:
+                            299000
+                    }
+                ]
+            },
+            {
+                id:
+                    "team",
+                label:
+                    "Team bản quyền",
+                available:
+                    true,
+                durations: [
+                    {
+                        id:
+                            "12m",
+                        label:
+                            "12 tháng",
+                        price:
+                            189050,
+                        oldPrice:
+                            479000
+                    }
+                ]
+            }
+        ],
+
+        benefits: [
+            {
+                icon:
+                    "bi-lightning-charge-fill",
+                title:
+                    "5–15 phút",
+                text:
+                    "Giao TK qua email"
+            },
+            {
+                icon:
+                    "bi-shield",
+                title:
+                    "Bảo hành",
+                text:
+                    "1 đổi 1 trọn gói"
+            },
+            {
+                icon:
+                    "bi-arrow-return-left",
+                title:
+                    "Hoàn tiền",
+                text:
+                    "Nếu không giao được"
+            },
+            {
+                icon:
+                    "bi-chat",
+                title:
+                    "8h–22h",
+                text:
+                    "Hỗ trợ nhanh qua Zalo"
+            }
+        ],
+
+        notice: [
+            {
+                html:
+                    "<strong>Cách kích hoạt:</strong> sau khi thanh toán, shop gửi link mời vào email của bạn để tham gia Team bản quyền, dùng được ngay sau 1–3 phút."
+            },
+            {
+                html:
+                    "<strong>Full tính năng Canva Pro</strong> qua Team bản quyền: project ở chế độ riêng tư, Brand Kit dùng theo quyền gói."
+            },
+            {
+                html:
+                    "<strong>Bảo hành theo gói:</strong> lỗi phát sinh shop xử lý nhanh trong thời hạn sử dụng."
+            }
+        ],
+
+        intro: [
+            {
+                type:
+                    "html",
+                html:
+                    "<p>Canva Pro phù hợp cho thiết kế social, banner, video ngắn, tài liệu marketing và làm việc nhóm với kho template, ảnh, video, font và công cụ AI cao cấp.</p>"
+            }
+        ],
+
+        content: [
+            {
+                id:
+                    "features",
+                type:
+                    "heading",
+                text:
+                    "Canva Pro có gì nổi bật?",
+                toc:
+                    true
+            },
+            {
+                type:
+                    "list",
+                items: [
+                    "Hơn 100 triệu tài nguyên thiết kế premium.",
+                    "Xóa nền 1 click và công cụ Magic Design.",
+                    "Brand Kit, font thương hiệu và thư viện mẫu chuyên nghiệp.",
+                    "Lưu trữ đám mây và chia sẻ làm việc nhóm."
+                ]
+            },
+            {
+                id:
+                    "buy-guide",
+                type:
+                    "heading",
+                text:
+                    "Hướng dẫn mua Canva Pro",
+                toc:
+                    true
+            },
+            {
+                type:
+                    "ordered-list",
+                items: [
+                    "Chọn loại gói và thời hạn.",
+                    "Nhập email Canva hoặc tick cấp tài khoản riêng tư.",
+                    "Bấm Thêm vào giỏ hàng hoặc Mua ngay.",
+                    "Shop gửi thông tin kích hoạt qua email/Zalo sau thanh toán."
+                ]
+            }
+        ],
+
+        faq: [
+            {
+                question:
+                    "Canva Pro có dùng được trên tài khoản của tôi không?",
+                answer:
+                    "Có. Bạn nhập email Canva để shop gửi lời mời nâng cấp theo gói phù hợp."
+            },
+            {
+                question:
+                    "Dự án thiết kế của tôi có riêng tư không?",
+                answer:
+                    "Dự án cá nhân vẫn nằm trong tài khoản của bạn; chỉ nên chia sẻ nội dung khi bạn chủ động cấp quyền."
+            }
+        ],
+
+        updated:
+            "[Cập nhật lần cuối: Tháng 8/2026]",
+
+        related:
+            [],
+
+        reviewSummary: {
+            satisfaction:
+                96,
+            totalPages:
+                58,
+            distribution: {
+                5: 930,
+                4: 270,
+                3: 48,
+                2: 0,
+                1: 0
+            },
+            mentions: [
+                {
+                    text:
+                        "Dễ kích hoạt",
+                    count:
+                        7
+                },
+                {
+                    text:
+                        "Giá tốt",
+                    count:
+                        6
+                }
+            ]
+        },
+
+        reviews: [
+            {
+                id:
+                    301,
+                name:
+                    "Minh Anh",
+                rating:
+                    5,
+                date:
+                    "08/08/2026",
+                wordCount:
+                    18,
+                text:
+                    "Canva Pro kích hoạt nhanh, dùng template và xóa nền ổn.",
+                verified:
+                    true,
+                helpful:
+                    3,
+                tags: [
+                    "Kích hoạt nhanh"
+                ]
+            },
+            {
+                id:
+                    302,
+                name:
+                    "Hoàng Nam",
+                rating:
+                    4,
+                date:
+                    "06/08/2026",
+                wordCount:
+                    14,
+                text:
+                    "Giá tốt, shop hướng dẫn rõ. Dùng thiết kế social rất tiện.",
+                verified:
+                    true,
+                helpful:
+                    1,
+                tags:
+                    []
+            }
         ]
 
     },

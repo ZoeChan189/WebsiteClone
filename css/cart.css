@@ -1,0 +1,875 @@
+/* =========================================================
+   KHO TAI KHOAN - CART DRAWER
+   ========================================================= */
+
+:root {
+    --cart-blue: #2364e8;
+    --cart-blue-hover: #1555d5;
+    --cart-text: #171717;
+    --cart-muted: #737373;
+    --cart-border: #e9e9e9;
+    --cart-white: #ffffff;
+    --cart-soft-blue: #dce8ff;
+    --cart-overlay: rgba(0, 0, 0, 0.67);
+    --cart-width: 380px;
+    --cart-header-height: 76px;
+}
+
+/* =========================================================
+   BODY LOCK
+   ========================================================= */
+
+body.ktk-cart-open {
+    overflow: hidden !important;
+}
+
+.ktk-cart-root,
+.ktk-cart-root * {
+    box-sizing: border-box;
+}
+
+/* =========================================================
+   OVERLAY
+   ========================================================= */
+
+.ktk-cart-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 999998;
+
+    background: var(--cart-overlay);
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    transition:
+        opacity 0.22s ease,
+        visibility 0.22s ease;
+}
+
+.ktk-cart-overlay.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* =========================================================
+   DRAWER
+   ========================================================= */
+
+.ktk-cart-drawer {
+    position: fixed;
+
+    top: 0;
+    right: 0;
+
+    z-index: 999999;
+
+    display: grid;
+    grid-template-rows:
+        var(--cart-header-height)
+        minmax(0, 1fr)
+        auto;
+
+    width: min(var(--cart-width), 100vw);
+    height: 100dvh;
+    min-height: 100vh;
+
+    background: #fff;
+
+    color: var(--cart-text);
+
+    box-shadow:
+        -16px 0 40px rgba(0, 0, 0, 0.12);
+
+    transform: translate3d(100%, 0, 0);
+
+    visibility: hidden;
+
+    overflow: hidden;
+
+    font-family:
+        "Be Vietnam Pro",
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+    transition:
+        transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0.28s ease;
+}
+
+.ktk-cart-drawer.is-open {
+    transform: translate3d(0, 0, 0);
+    visibility: visible;
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.ktk-cart-header {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    padding:
+        0
+        20px
+        0
+        17px;
+
+    border-bottom:
+        1px solid
+        var(--cart-border);
+
+    background: #fff;
+}
+
+.ktk-cart-header h2 {
+    margin: 0;
+    padding: 0;
+
+    color: #111;
+
+    font: inherit;
+
+    font-size: 24px;
+    font-weight: 600;
+
+    line-height: 1;
+
+    letter-spacing: -0.45px;
+}
+
+/* =========================================================
+   CLOSE BUTTON
+   ========================================================= */
+
+.ktk-cart-close {
+    appearance: none;
+
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    margin: 0;
+
+    padding:
+        8px
+        0
+        8px
+        8px;
+
+    border: 0;
+
+    background: transparent;
+
+    color: #161616;
+
+    font: inherit;
+
+    font-size: 15px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        color 0.16s ease,
+        opacity 0.16s ease;
+}
+
+.ktk-cart-close svg {
+    width: 19px;
+    height: 19px;
+
+    fill: none;
+
+    stroke: currentColor;
+    stroke-width: 1.7;
+}
+
+.ktk-cart-close:hover {
+    color: var(--cart-blue);
+}
+
+/* =========================================================
+   BODY / SCROLLBAR
+   ========================================================= */
+
+.ktk-cart-body {
+    min-height: 0;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    overscroll-behavior: contain;
+
+    background: #fff;
+
+    scrollbar-width: thin;
+    scrollbar-color:
+        #bcbcbc
+        transparent;
+}
+
+.ktk-cart-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ktk-cart-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ktk-cart-body::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+
+    background: #bcbcbc;
+}
+
+/* =========================================================
+   EMPTY CART
+   ========================================================= */
+
+.ktk-cart-empty {
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    width: 100%;
+
+    padding:
+        38px
+        26px
+        30px;
+
+    text-align: center;
+}
+
+.ktk-cart-empty-icon {
+    display: block;
+
+    width: 94px;
+    height: 94px;
+
+    margin-bottom: 20px;
+
+    color: #eeeeee;
+}
+
+.ktk-cart-empty p {
+    margin:
+        0
+        0
+        25px;
+
+    color: #171717;
+
+    font-size: 15px;
+    font-weight: 600;
+
+    line-height: 1.5;
+}
+
+.ktk-cart-back {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    min-height: 40px;
+
+    padding:
+        0
+        16px;
+
+    border-radius: 4px;
+
+    background: var(--cart-blue);
+
+    color: #fff !important;
+
+    text-decoration: none !important;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    transition:
+        background 0.16s ease,
+        transform 0.16s ease;
+}
+
+.ktk-cart-back:hover {
+    background: var(--cart-blue-hover);
+
+    color: #fff !important;
+
+    transform: translateY(-1px);
+}
+
+/* =========================================================
+   CART ITEMS
+   ========================================================= */
+
+.ktk-cart-items {
+    width: 100%;
+}
+
+.ktk-cart-item {
+    position: relative;
+
+    display: grid;
+
+    grid-template-columns:
+        72px
+        minmax(0, 1fr);
+
+    gap: 13px;
+
+    width: 100%;
+
+    padding:
+        15px
+        17px
+        17px;
+
+    border-bottom:
+        1px solid
+        #ededed;
+
+    background: #fff;
+}
+
+/* =========================================================
+   PRODUCT IMAGE
+   ========================================================= */
+
+.ktk-cart-item-image {
+    position: relative;
+
+    width: 72px;
+    height: 72px;
+
+    overflow: hidden;
+
+    border-radius: 3px;
+
+    background: #f6f7fb;
+}
+
+.ktk-cart-item-image img {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+    object-position: center;
+}
+
+.ktk-cart-image-placeholder {
+    display: grid;
+
+    width: 100%;
+    height: 100%;
+
+    place-items: center;
+
+    color: #9ba3b1;
+
+    font-size: 12px;
+    font-weight: 800;
+
+    letter-spacing: 0.08em;
+}
+
+/* =========================================================
+   PRODUCT INFO
+   ========================================================= */
+
+.ktk-cart-item-info {
+    min-width: 0;
+}
+
+.ktk-cart-item-heading {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        18px;
+
+    gap: 6px;
+
+    align-items: start;
+}
+
+.ktk-cart-item-heading h3 {
+    display: -webkit-box;
+
+    min-width: 0;
+
+    margin:
+        0
+        0
+        5px;
+
+    padding: 0;
+
+    overflow: hidden;
+
+    color: #141414;
+
+    font: inherit;
+
+    font-size: 16px;
+    font-weight: 600;
+
+    line-height: 1.35;
+
+    letter-spacing: -0.15px;
+
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+/* =========================================================
+   REMOVE
+   ========================================================= */
+
+.ktk-cart-remove {
+    appearance: none;
+
+    display: grid;
+
+    width: 18px;
+    height: 18px;
+
+    margin-top: -1px;
+
+    padding: 0;
+
+    place-items: center;
+
+    border: 0;
+    border-radius: 50%;
+
+    background: transparent;
+
+    color: #474747;
+
+    font: inherit;
+
+    font-size: 18px;
+    font-weight: 400;
+
+    line-height: 18px;
+
+    cursor: pointer;
+
+    transition:
+        color 0.15s ease,
+        background 0.15s ease;
+}
+
+.ktk-cart-remove:hover {
+    background: #f2f2f2;
+
+    color: #111;
+}
+
+/* =========================================================
+   PRODUCT META
+   ========================================================= */
+
+.ktk-cart-meta {
+    color: #1d1d1d;
+}
+
+.ktk-cart-meta p {
+    margin:
+        0
+        0
+        4px;
+
+    padding: 0;
+
+    color: inherit;
+
+    font-size: 14px;
+    font-weight: 400;
+
+    line-height: 1.35;
+}
+
+.ktk-cart-meta strong {
+    font-weight: 600;
+}
+
+/* =========================================================
+   QUANTITY + PRICE
+   ========================================================= */
+
+.ktk-cart-item-bottom {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    align-items: center;
+
+    gap:
+        8px
+        11px;
+
+    margin-top: 10px;
+}
+
+.ktk-cart-qty {
+    display: inline-grid;
+
+    grid-template-columns:
+        29px
+        33px
+        29px;
+
+    height: 35px;
+
+    overflow: hidden;
+
+    border:
+        1px solid
+        #dedede;
+
+    border-radius: 4px;
+
+    background: #fff;
+}
+
+.ktk-cart-qty button,
+.ktk-cart-qty span {
+    display: grid;
+
+    min-width: 0;
+    height: 100%;
+
+    place-items: center;
+
+    margin: 0;
+    padding: 0;
+
+    border: 0;
+
+    background: transparent;
+
+    color: #171717;
+
+    font: inherit;
+
+    font-size: 14px;
+}
+
+.ktk-cart-qty button {
+    cursor: pointer;
+
+    transition:
+        background 0.14s ease,
+        color 0.14s ease;
+}
+
+.ktk-cart-qty button:hover {
+    background: #f5f7fb;
+
+    color: var(--cart-blue);
+}
+
+.ktk-cart-qty span {
+    border-right:
+        1px solid
+        #ededed;
+
+    border-left:
+        1px solid
+        #ededed;
+
+    font-weight: 500;
+}
+
+.ktk-cart-line-price {
+    display: inline-flex;
+
+    align-items: baseline;
+
+    gap: 4px;
+
+    min-width: 0;
+
+    white-space: nowrap;
+
+    font-size: 14px;
+}
+
+.ktk-cart-line-price span {
+    color: #777;
+}
+
+.ktk-cart-line-price strong {
+    color: var(--cart-blue);
+
+    font-weight: 700;
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.ktk-cart-footer {
+    display: grid;
+
+    gap: 10px;
+
+    padding:
+        17px
+        17px
+        15px;
+
+    border-top:
+        1px solid
+        var(--cart-border);
+
+    background: #fff;
+
+    box-shadow:
+        0
+        -5px
+        18px
+        rgba(0, 0, 0, 0.025);
+}
+
+.ktk-cart-footer.is-empty {
+    display: none;
+}
+
+/* =========================================================
+   SUBTOTAL
+   ========================================================= */
+
+.ktk-cart-subtotal {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 14px;
+
+    min-width: 0;
+
+    margin-bottom: 1px;
+}
+
+.ktk-cart-subtotal span {
+    color: #111;
+
+    font-size: 18px;
+    font-weight: 600;
+
+    line-height: 1.2;
+}
+
+.ktk-cart-subtotal strong {
+    overflow: hidden;
+
+    color: var(--cart-blue);
+
+    font-size: 18px;
+    font-weight: 700;
+
+    line-height: 1.2;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* =========================================================
+   FOOTER BUTTONS
+   ========================================================= */
+
+.ktk-cart-action {
+    appearance: none;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    width: 100%;
+    min-height: 44px;
+
+    margin: 0;
+
+    padding:
+        0
+        18px;
+
+    border: 0;
+
+    border-radius: 4px;
+
+    font: inherit;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        background 0.16s ease,
+        color 0.16s ease,
+        transform 0.16s ease;
+}
+
+.ktk-cart-action:hover {
+    transform: translateY(-1px);
+}
+
+.ktk-cart-view {
+    background: var(--cart-soft-blue);
+
+    color: #1d59c9;
+}
+
+.ktk-cart-view:hover {
+    background: #cedeff;
+
+    color: #164dac;
+}
+
+.ktk-cart-checkout {
+    background: var(--cart-blue);
+
+    color: #fff;
+}
+
+.ktk-cart-checkout:hover {
+    background: var(--cart-blue-hover);
+
+    color: #fff;
+}
+
+/* =========================================================
+   CART COUNT
+   ========================================================= */
+
+[data-cart-open] {
+    position: relative;
+}
+
+[data-cart-count][hidden] {
+    display: none !important;
+}
+
+/* =========================================================
+   FOCUS
+   ========================================================= */
+
+.ktk-cart-close:focus-visible,
+.ktk-cart-back:focus-visible,
+.ktk-cart-action:focus-visible,
+.ktk-cart-remove:focus-visible,
+.ktk-cart-qty button:focus-visible {
+    outline:
+        2px solid
+        rgba(35, 100, 232, 0.42);
+
+    outline-offset: 2px;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 767px) {
+
+    :root {
+        --cart-header-height: 66px;
+    }
+
+    .ktk-cart-drawer {
+        width: min(380px, 100vw);
+    }
+
+    .ktk-cart-header {
+        padding:
+            0
+            16px;
+    }
+
+    .ktk-cart-header h2 {
+        font-size: 21px;
+    }
+
+    .ktk-cart-item {
+        grid-template-columns:
+            68px
+            minmax(0, 1fr);
+
+        gap: 11px;
+
+        padding:
+            14px
+            14px
+            16px;
+    }
+
+    .ktk-cart-item-image {
+        width: 68px;
+        height: 68px;
+    }
+
+    .ktk-cart-footer {
+        padding:
+            15px
+            14px
+            13px;
+    }
+}
+
+@media (max-width: 420px) {
+
+    .ktk-cart-drawer {
+        width: 100vw;
+    }
+
+    .ktk-cart-empty {
+        padding-top: 34px;
+    }
+
+    .ktk-cart-line-price {
+        width: 100%;
+    }
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .ktk-cart-overlay,
+    .ktk-cart-drawer,
+    .ktk-cart-close,
+    .ktk-cart-back,
+    .ktk-cart-action,
+    .ktk-cart-remove,
+    .ktk-cart-qty button {
+        transition: none !important;
+    }
+}

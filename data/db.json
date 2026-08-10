@@ -5,7 +5,8 @@
       "username": "admin",
       "name": "Quản trị viên",
       "role": "admin",
-      "passwordHash": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
+      "sessionVersion": 0,
+      "passwordHash": ""
     }
   ],
   "categories": [
@@ -13,7 +14,7 @@
       "id": "cat_hoc_tap",
       "slug": "hoc-tap",
       "name": "Học tập",
-      "description": "Danh mục Học tập tại Kho Tài Khoản tổng hợp các tài khoản hỗ trợ học ngoại ngữ, học kỹ năng chuyên môn và tự học trên nền tảng quốc tế như Duolingo Super, eJOY English Pro, Udemy Business và Coursera Plus. Đây là nhóm sản phẩm phù hợp cho người muốn học hiệu quả hơn nhưng vẫn tối ưu chi phí.",
+      "description": "Danh mục Học tập tại storetainguyen tổng hợp các tài khoản hỗ trợ học ngoại ngữ, học kỹ năng chuyên môn và tự học trên nền tảng quốc tế như Duolingo Super, eJOY English Pro, Udemy Business và Coursera Plus. Đây là nhóm sản phẩm phù hợp cho người muốn học hiệu quả hơn nhưng vẫn tối ưu chi phí.",
       "status": "active",
       "totalProducts": 32
     },
@@ -21,7 +22,7 @@
       "id": "cat_lam_viec",
       "slug": "lam-viec",
       "name": "Làm việc",
-      "description": "Danh mục Làm việc tại Kho Tài Khoản tập hợp các tài khoản hỗ trợ thiết kế, viết lách, họp trực tuyến, lưu trữ dữ liệu và tăng năng suất công việc như Canva Pro, Grammarly Premium, Zoom Pro, Dropbox và OneDrive.",
+      "description": "Danh mục Làm việc tại storetainguyen tập hợp các tài khoản hỗ trợ thiết kế, viết lách, họp trực tuyến, lưu trữ dữ liệu và tăng năng suất công việc như Canva Pro, Grammarly Premium, Zoom Pro, Dropbox và OneDrive.",
       "status": "active",
       "totalProducts": 35
     },
@@ -1321,17 +1322,5 @@
       "description": ""
     }
   ],
-  "orders": [
-    {
-      "id": "ord_demo",
-      "customerName": "Khách demo",
-      "customerPhone": "0865890208",
-      "productId": "prod_chatgpt_plus",
-      "quantity": 1,
-      "total": 147510,
-      "status": "pending",
-      "note": "Đơn mẫu để test admin.",
-      "createdAt": "2026-08-08T13:30:00.000Z"
-    }
-  ]
+  "orders": []
 }
