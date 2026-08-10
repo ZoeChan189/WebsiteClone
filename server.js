@@ -23,6 +23,8 @@ const githubBranch = process.env.GITHUB_BRANCH || "feature/cart";
 const githubDbPath = process.env.GITHUB_DB_PATH || "data/db.json";
 const maxBodyBytes = Number(process.env.MAX_BODY_BYTES || 250000);
 const sessionMaxAgeMs = Number(process.env.SESSION_MAX_AGE_MS || 24 * 60 * 60 * 1000);
+const telegramBotUrl = (process.env.TELEGRAM_BOT_URL || "").replace(/\/+$/, "");
+const botWebhookSecret = process.env.BOT_WEBHOOK_SECRET || "";
 const sessions = new Map();
 const loginAttempts = new Map();
 
@@ -399,6 +401,81 @@ function priceToVnd(value) {
     return number > 0 && number < 10000 ? number * 1000 : number;
 }
 
+function publicOrigin(req) {
+    const proto = req.headers["x-forwarded-proto"] || "http";
+    const host = req.headers["x-forwarded-host"] || req.headers.host || "";
+    return `${proto}://${host}`;
+}
+
+function buildTelegramStartUrl(orderId) {
+    if (!telegramBotUrl || !orderId) {
+        return "";
+    }
+
+    const separator = telegramBotUrl.includes("?") ? "&" : "?";
+    return `${telegramBotUrl}${separator}start=${encodeURIComponent(orderId)}`;
+}
+
+function requireBot(req, res) {
+    if (!botWebhookSecret) {
+        sendError(res, 503, "BOT_WEBHOOK_SECRET chưa được cấu hình.");
+        return false;
+    }
+
+    const provided =
+        req.headers["x-bot-secret"]
+        || req.headers["x-webhook-secret"]
+        || "";
+
+    if (!timingSafeEqualString(provided, botWebhookSecret)) {
+        sendError(res, 401, "Bot secret không hợp lệ.");
+        return false;
+    }
+
+    return true;
+}
+
+function orderProductSnapshot(product) {
+    if (!product) {
+        return null;
+    }
+
+    return {
+        id: product.id,
+        slug: product.slug,
+        name: product.name,
+        image: product.image || product.icon || "",
+        price: priceToVnd(product.price)
+    };
+}
+
+function publicOrder(order, req = null) {
+    return {
+        id: order.id,
+        orderId: order.id,
+        userId: order.userId || null,
+        productId: order.productId || "",
+        productSlug: order.productSlug || "",
+        productName: order.productName || "",
+        items: order.items || [],
+        quantity: Number(order.quantity || 1),
+        total: Number(order.total || 0),
+        amount: Number(order.total || order.amount || 0),
+        status: order.status || "created",
+        source: order.source || "website",
+        telegramUserId: order.telegramUserId || "",
+        telegramUsername: order.telegramUsername || "",
+        paidAt: order.paidAt || "",
+        deliveredAt: order.deliveredAt || "",
+        botPaymentRef: order.botPaymentRef || "",
+        note: order.note || "",
+        createdAt: order.createdAt || "",
+        updatedAt: order.updatedAt || "",
+        telegramUrl: buildTelegramStartUrl(order.id),
+        botOrderApi: req ? `${publicOrigin(req)}/api/bot/orders/${encodeURIComponent(order.id)}` : ""
+    };
+}
+
 function formatMoney(value) {
     return `${priceToVnd(value).toLocaleString("vi-VN")}đ`;
 }
@@ -637,6 +714,60 @@ async function handleApi(req, res, url) {
     if (url.pathname === "/api/health") {
         sendJson(res, 200, { ok: true });
         return;
+    }
+
+    if (url.pathname === "/api/public/settings" && req.method === "GET") {
+        sendJson(res, 200, {
+            telegramBotUrl,
+            telegramEnabled: Boolean(telegramBotUrl)
+        });
+        return;
+    }
+
+    if (resource === "bot") {
+        if (!requireBot(req, res)) return;
+
+        if (parts[2] === "orders" && parts[3] && req.method === "GET") {
+            const order = db.orders?.find((item) => item.id === parts[3]);
+
+            if (!order) {
+                sendError(res, 404, "Không tìm thấy đơn hàng.");
+                return;
+            }
+
+            sendJson(res, 200, publicOrder(order, req));
+            return;
+        }
+
+        if (parts[2] === "order-paid" && req.method === "POST") {
+            const input = await readBody(req);
+            const orderId = String(input.orderId || input.id || "").trim();
+            const index = db.orders?.findIndex((item) => item.id === orderId) ?? -1;
+
+            if (index < 0) {
+                sendError(res, 404, "Không tìm thấy đơn hàng.");
+                return;
+            }
+
+            const now = new Date().toISOString();
+            db.orders[index] = {
+                ...db.orders[index],
+                status: String(input.status || "paid"),
+                total: Number(input.amount || input.total || db.orders[index].total || 0),
+                amount: Number(input.amount || input.total || db.orders[index].total || 0),
+                telegramUserId: String(input.telegramUserId || db.orders[index].telegramUserId || ""),
+                telegramUsername: String(input.telegramUsername || db.orders[index].telegramUsername || ""),
+                botPaymentRef: String(input.botPaymentRef || input.paymentRef || db.orders[index].botPaymentRef || ""),
+                paidAt: String(input.paidAt || now),
+                deliveredAt: input.deliveredAt ? String(input.deliveredAt) : db.orders[index].deliveredAt || "",
+                botRaw: input,
+                updatedAt: now
+            };
+
+            await writeDb(db);
+            sendJson(res, 200, publicOrder(db.orders[index], req));
+            return;
+        }
     }
 
     if (url.pathname === "/api/auth/login" && req.method === "POST") {
@@ -1046,24 +1177,71 @@ async function handleApi(req, res, url) {
 
         if (req.method === "POST") {
             const input = await readBody(req);
-            const product = db.products.find((item) => item.id === input.productId);
             const user = authUser(req, db);
-            const quantity = Math.max(1, Number(input.quantity || 1));
+            const requestedItems = Array.isArray(input.items) && input.items.length
+                ? input.items
+                : [{
+                    productId: input.productId,
+                    productSlug: input.productSlug || input.slug,
+                    quantity: input.quantity || 1,
+                    options: input.options || {}
+                }];
+
+            const items = requestedItems.map((item) => {
+                const product = db.products.find((current) =>
+                    current.id === item.productId
+                    || current.slug === item.productSlug
+                    || current.slug === item.slug
+                );
+
+                if (!product || product.status === "draft") {
+                    return null;
+                }
+
+                const quantity = Math.max(1, Math.min(99, Number(item.quantity || 1)));
+                const unitPrice = priceToVnd(product.price);
+
+                return {
+                    productId: product.id,
+                    productSlug: product.slug,
+                    productName: product.name,
+                    image: product.image || product.icon || "",
+                    quantity,
+                    unitPrice,
+                    total: unitPrice * quantity,
+                    options: item.options || {}
+                };
+            }).filter(Boolean);
+
+            if (!items.length) {
+                sendError(res, 400, "Không tìm thấy sản phẩm để tạo đơn.");
+                return;
+            }
+
+            const total = items.reduce((sum, item) => sum + item.total, 0);
+            const firstItem = items[0];
+            const now = new Date().toISOString();
             const order = {
                 id: createId("ord"),
                 userId: user?.id || null,
                 customerName: String(input.customerName || "").trim(),
                 customerPhone: String(input.customerPhone || "").trim(),
-                productId: input.productId,
-                quantity,
-                total: Number(input.total || (product ? product.price * quantity : 0)),
-                status: "pending",
+                productId: firstItem.productId,
+                productSlug: firstItem.productSlug,
+                productName: firstItem.productName,
+                quantity: items.reduce((sum, item) => sum + item.quantity, 0),
+                items,
+                total,
+                amount: total,
+                status: "created",
+                source: "website",
                 note: String(input.note || "").trim(),
-                createdAt: new Date().toISOString()
+                createdAt: now,
+                updatedAt: now
             };
             db.orders.unshift(order);
             await writeDb(db);
-            sendJson(res, 201, order);
+            sendJson(res, 201, publicOrder(order, req));
             return;
         }
 

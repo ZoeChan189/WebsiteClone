@@ -3633,6 +3633,73 @@ function selectedOrderInfo() {
 }
 
 
+async function createTelegramOrder() {
+
+    const info =
+        selectedOrderInfo();
+
+    const response =
+        await fetch(
+            "/api/orders",
+            {
+                method:
+                    "POST",
+
+                headers: {
+                    "content-type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify(
+                        {
+                            productSlug:
+                                info.slug,
+
+                            quantity:
+                                info.quantity,
+
+                            options: {
+                                variant:
+                                    info.variant,
+
+                                duration:
+                                    info.duration
+                            },
+
+                            note:
+                                "Telegram bot checkout"
+                        }
+                    )
+            }
+        );
+
+    const data =
+        await response.json();
+
+    if (
+        !response.ok
+    ) {
+        throw new Error(
+            data.error
+            ||
+            "Không tạo được đơn hàng."
+        );
+    }
+
+    if (
+        !data.telegramUrl
+    ) {
+        throw new Error(
+            "Chưa cấu hình TELEGRAM_BOT_URL trên server."
+        );
+    }
+
+    return data;
+
+}
+
+
 /* ==========================================================
    BUTTON FEEDBACK
 ========================================================== */
@@ -3691,6 +3758,44 @@ function buyNow() {
         $("#buyNowButton"),
         "Đã chọn ✓"
     );
+
+}
+
+
+async function buyNowTelegram(event) {
+
+    event
+        ?.preventDefault();
+
+
+    flashButton(
+        $("#buyNowButton"),
+        "Đang mở bot..."
+    );
+
+    flashButton(
+        $("#stickyBuyButton"),
+        "Đang mở bot..."
+    );
+
+
+    try {
+
+        const order =
+            await createTelegramOrder();
+
+        window.location.href =
+            order.telegramUrl;
+
+    } catch (error) {
+
+        alert(
+            error.message
+            ||
+            "Không mở được Telegram bot."
+        );
+
+    }
 
 }
 
@@ -3907,14 +4012,14 @@ function setupInteractions() {
     $("#buyNowButton")
         ?.addEventListener(
             "click",
-            buyNow
+            buyNowTelegram
         );
 
 
     $("#stickyBuyButton")
         ?.addEventListener(
             "click",
-            buyNow
+            buyNowTelegram
         );
 
 

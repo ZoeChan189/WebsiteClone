@@ -1040,6 +1040,39 @@
         );
     }
 
+    async function createTelegramCartOrder() {
+        const response = await fetch(
+            "/api/orders",
+            {
+                method: "POST",
+                headers: {
+                    "content-type": "application/json"
+                },
+                body: JSON.stringify({
+                    items: getItems().map((item) => ({
+                        productId: item.id,
+                        productSlug: item.slug,
+                        quantity: item.quantity,
+                        options: item.options
+                    })),
+                    note: "Telegram bot cart checkout"
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Không tạo được đơn hàng.");
+        }
+
+        if (!data.telegramUrl) {
+            throw new Error("Chưa cấu hình TELEGRAM_BOT_URL trên server.");
+        }
+
+        return data;
+    }
+
     /* =====================================================
        EXTERNAL CART BADGE
        ===================================================== */
@@ -1891,6 +1924,31 @@
                     }
                 )
             );
+
+            checkout.disabled =
+                true;
+
+            const originalText =
+                checkout.textContent;
+
+            checkout.textContent =
+                "Đang mở bot...";
+
+            createTelegramCartOrder()
+                .then((order) => {
+                    window.location.href =
+                        order.telegramUrl;
+                })
+                .catch((error) => {
+                    alert(
+                        error.message ||
+                        "Không mở được Telegram bot."
+                    );
+                    checkout.disabled =
+                        false;
+                    checkout.textContent =
+                        originalText;
+                });
 
             return;
         }
