@@ -8,14 +8,23 @@ const path = require("path");
 const { URL } = require("url");
 
 const rootDir = __dirname;
-const dataFile = path.join(rootDir, "data", "db.json");
+const seedDataFile = path.join(rootDir, "data", "db.json");
+const dataFile = process.env.DATA_FILE
+    ? path.resolve(process.env.DATA_FILE)
+    : seedDataFile;
 const port = Number(process.env.PORT || 8010);
 const sessionSecret = process.env.SESSION_SECRET || "storetainguyen-dev-session-secret";
+const adminPassword = process.env.ADMIN_PASSWORD || "";
+const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH || "";
 const githubToken = process.env.GITHUB_TOKEN || "";
+const syncDbToGithubEnabled = process.env.DB_SYNC_TO_GITHUB === "true";
 const githubRepo = process.env.GITHUB_REPO || "ZoeChan189/WebsiteClone";
 const githubBranch = process.env.GITHUB_BRANCH || "feature/cart";
 const githubDbPath = process.env.GITHUB_DB_PATH || "data/db.json";
+const maxBodyBytes = Number(process.env.MAX_BODY_BYTES || 250000);
+const sessionMaxAgeMs = Number(process.env.SESSION_MAX_AGE_MS || 24 * 60 * 60 * 1000);
 const sessions = new Map();
+const loginAttempts = new Map();
 
 const mimeTypes = {
     ".html": "text/html; charset=utf-8",
@@ -33,7 +42,8 @@ const mimeTypes = {
 function sendJson(res, status, payload) {
     res.writeHead(status, {
         "content-type": "application/json; charset=utf-8",
-        "cache-control": "no-store"
+        "cache-control": "no-store",
+        ...securityHeaders()
     });
     res.end(JSON.stringify(payload));
 }
@@ -41,13 +51,23 @@ function sendJson(res, status, payload) {
 function sendJs(res, payload) {
     res.writeHead(200, {
         "content-type": "application/javascript; charset=utf-8",
-        "cache-control": "no-store"
+        "cache-control": "no-store",
+        ...securityHeaders()
     });
     res.end(payload);
 }
 
 function sendError(res, status, message) {
     sendJson(res, status, { error: message });
+}
+
+function securityHeaders() {
+    return {
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "SAMEORIGIN",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "camera=(), microphone=(), geolocation=()"
+    };
 }
 
 function githubRequest(method, apiPath, body = null) {
@@ -100,6 +120,47 @@ function hashPassword(password) {
     return crypto.createHash("sha256").update(String(password)).digest("hex");
 }
 
+function createPasswordHash(password) {
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hash = crypto.pbkdf2Sync(String(password), salt, 120000, 32, "sha256").toString("hex");
+    return `pbkdf2$${salt}$${hash}`;
+}
+
+function timingSafeEqualHex(left, right) {
+    const leftBuffer = Buffer.from(String(left || ""), "hex");
+    const rightBuffer = Buffer.from(String(right || ""), "hex");
+
+    if (leftBuffer.length !== rightBuffer.length) {
+        return false;
+    }
+
+    return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function verifyPassword(password, storedHash) {
+    const hash = String(storedHash || "");
+
+    if (hash.startsWith("pbkdf2$")) {
+        const [, salt, expected] = hash.split("$");
+        const actual = crypto.pbkdf2Sync(String(password), salt, 120000, 32, "sha256").toString("hex");
+        return timingSafeEqualHex(actual, expected);
+    }
+
+    return timingSafeEqualHex(hashPassword(password), hash);
+}
+
+function verifyAdminPassword(password, user) {
+    if (adminPasswordHash) {
+        return verifyPassword(password, adminPasswordHash);
+    }
+
+    if (adminPassword) {
+        return String(password) === adminPassword;
+    }
+
+    return verifyPassword(password, user?.passwordHash);
+}
+
 function base64UrlEncode(value) {
     return Buffer.from(value).toString("base64url");
 }
@@ -113,6 +174,17 @@ function signPayload(payload) {
         .createHmac("sha256", sessionSecret)
         .update(payload)
         .digest("base64url");
+}
+
+function timingSafeEqualString(left, right) {
+    const leftBuffer = Buffer.from(String(left || ""));
+    const rightBuffer = Buffer.from(String(right || ""));
+
+    if (leftBuffer.length !== rightBuffer.length) {
+        return false;
+    }
+
+    return crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
 function createSessionToken(userId) {
@@ -135,12 +207,18 @@ function userIdFromToken(token) {
 
     const [payload, signature] = token.split(".");
 
-    if (!payload || !signature || signPayload(payload) !== signature) {
+    if (!payload || !signature || !timingSafeEqualString(signPayload(payload), signature)) {
         return "";
     }
 
     try {
-        return JSON.parse(base64UrlDecode(payload)).userId || "";
+        const session = JSON.parse(base64UrlDecode(payload));
+
+        if (!session.createdAt || Date.now() - Number(session.createdAt) > sessionMaxAgeMs) {
+            return "";
+        }
+
+        return session.userId || "";
     } catch {
         return "";
     }
@@ -173,8 +251,15 @@ function requireAdmin(req, res, db) {
 
 async function readBody(req) {
     const chunks = [];
+    let total = 0;
 
     for await (const chunk of req) {
+        total += chunk.length;
+
+        if (total > maxBodyBytes) {
+            throw new Error("Payload quá lớn.");
+        }
+
         chunks.push(chunk);
     }
 
@@ -182,7 +267,42 @@ async function readBody(req) {
     return raw ? JSON.parse(raw) : {};
 }
 
+function clientIp(req) {
+    return String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "")
+        .split(",")[0]
+        .trim();
+}
+
+function checkLoginRateLimit(req) {
+    const key = clientIp(req) || "unknown";
+    const now = Date.now();
+    const windowMs = 15 * 60 * 1000;
+    const maxAttempts = 12;
+    const bucket = loginAttempts.get(key) || { count: 0, resetAt: now + windowMs };
+
+    if (bucket.resetAt <= now) {
+        bucket.count = 0;
+        bucket.resetAt = now + windowMs;
+    }
+
+    bucket.count += 1;
+    loginAttempts.set(key, bucket);
+
+    return bucket.count <= maxAttempts;
+}
+
+function clearLoginRateLimit(req) {
+    loginAttempts.delete(clientIp(req) || "unknown");
+}
+
 async function readDb() {
+    try {
+        await fs.access(dataFile);
+    } catch {
+        await fs.mkdir(path.dirname(dataFile), { recursive: true });
+        await fs.copyFile(seedDataFile, dataFile);
+    }
+
     const raw = await fs.readFile(dataFile, "utf8");
     return JSON.parse(raw);
 }
@@ -190,7 +310,7 @@ async function readDb() {
 let githubSyncQueue = Promise.resolve();
 
 async function syncDbToGithub(raw) {
-    if (!githubToken) {
+    if (!githubToken || !syncDbToGithubEnabled) {
         return;
     }
 
@@ -223,6 +343,7 @@ async function syncDbToGithub(raw) {
 async function writeDb(db) {
     const raw = JSON.stringify(db, null, 2) + "\n";
 
+    await fs.mkdir(path.dirname(dataFile), { recursive: true });
     await fs.writeFile(dataFile, raw, "utf8");
 
     try {
@@ -457,6 +578,56 @@ function normalizeCategory(input, existing = {}) {
     };
 }
 
+function publicProduct(product) {
+    return {
+        id: product.id,
+        slug: product.slug,
+        name: product.name,
+        categorySlug: product.categorySlug,
+        image: product.image || "",
+        icon: product.icon || "",
+        discount: product.discount || "",
+        price: Number(product.price || 0),
+        oldPrice: product.oldPrice ?? null,
+        stock: Number(product.stock || 0),
+        rating: Number(product.rating || 4.6),
+        sold: Number(product.sold || 0),
+        description: product.description || "",
+        status: product.status || "active"
+    };
+}
+
+function publicCategory(category) {
+    return {
+        id: category.id,
+        slug: category.slug,
+        name: category.name,
+        description: category.description || "",
+        status: category.status || "active",
+        totalProducts: Number(category.totalProducts || 0)
+    };
+}
+
+function publicProducts(db) {
+    return (db.products || [])
+        .filter((product) => product.status !== "draft")
+        .map(publicProduct);
+}
+
+function publicCategories(db) {
+    return (db.categories || [])
+        .filter((category) => category.status !== "draft")
+        .map(publicCategory);
+}
+
+function adminProducts(db) {
+    return (db.products || []).map(publicProduct);
+}
+
+function adminCategories(db) {
+    return (db.categories || []).map(publicCategory);
+}
+
 async function handleApi(req, res, url) {
     const db = await readDb();
     const parts = url.pathname.split("/").filter(Boolean);
@@ -469,6 +640,11 @@ async function handleApi(req, res, url) {
     }
 
     if (url.pathname === "/api/auth/login" && req.method === "POST") {
+        if (!checkLoginRateLimit(req)) {
+            sendError(res, 429, "Bạn thử đăng nhập quá nhiều lần. Vui lòng chờ rồi thử lại.");
+            return;
+        }
+
         const input = await readBody(req);
         const login = String(input.username || "").trim().toLowerCase();
         const user = db.users?.find((item) =>
@@ -476,11 +652,16 @@ async function handleApi(req, res, url) {
             || item.email?.toLowerCase() === login
         );
 
-        if (!user || user.passwordHash !== hashPassword(input.password)) {
+        const passwordOk = user?.role === "admin"
+            ? verifyAdminPassword(input.password, user)
+            : verifyPassword(input.password, user?.passwordHash);
+
+        if (!user || !passwordOk) {
             sendError(res, 401, "Sai tài khoản hoặc mật khẩu.");
             return;
         }
 
+        clearLoginRateLimit(req);
         const token = createSessionToken(user.id);
 
         sendJson(res, 200, {
@@ -502,7 +683,7 @@ async function handleApi(req, res, url) {
         const email = String(input.email || "").trim().toLowerCase();
         const password = String(input.password || "");
 
-        if (!username || !email || password.length < 6) {
+        if (!username || !email || password.length < 8) {
             sendError(res, 400, "Vui lòng nhập email và mật khẩu từ 6 ký tự.");
             return;
         }
@@ -525,7 +706,7 @@ async function handleApi(req, res, url) {
             firstName: input.firstName || "",
             lastName: input.lastName || "",
             role: "customer",
-            passwordHash: hashPassword(password),
+            passwordHash: createPasswordHash(password),
             createdAt: new Date().toISOString()
         };
 
@@ -599,12 +780,12 @@ async function handleApi(req, res, url) {
         const nextPassword = String(input.newPassword || "");
 
         if (nextPassword) {
-            if (nextPassword.length < 6) {
-                sendError(res, 400, "Mật khẩu mới cần ít nhất 6 ký tự.");
+            if (nextPassword.length < 8) {
+                sendError(res, 400, "Mật khẩu mới cần ít nhất 8 ký tự.");
                 return;
             }
 
-            if (input.currentPassword && user.passwordHash !== hashPassword(input.currentPassword)) {
+            if (input.currentPassword && !verifyPassword(input.currentPassword, user.passwordHash)) {
                 sendError(res, 400, "Mật khẩu hiện tại không đúng.");
                 return;
             }
@@ -616,7 +797,7 @@ async function handleApi(req, res, url) {
             lastName: String(input.lastName || "").trim(),
             name: String(input.name || user.name || user.username).trim(),
             email: String(input.email || user.email || "").trim().toLowerCase(),
-            passwordHash: nextPassword ? hashPassword(nextPassword) : user.passwordHash
+            passwordHash: nextPassword ? createPasswordHash(nextPassword) : user.passwordHash
         };
         await writeDb(db);
         sendJson(res, 200, {
@@ -652,17 +833,139 @@ async function handleApi(req, res, url) {
 
     if (resource === "summary" && req.method === "GET") {
         sendJson(res, 200, {
-            products: db.products.length,
-            categories: db.categories.length,
-            orders: db.orders.length,
-            revenue: db.orders.reduce((sum, order) => sum + Number(order.total || 0), 0)
+            products: publicProducts(db).length,
+            categories: publicCategories(db).length,
+            orders: isAdmin(req, db) ? db.orders.length : 0,
+            revenue: isAdmin(req, db) ? db.orders.reduce((sum, order) => sum + Number(order.total || 0), 0) : 0
         });
         return;
     }
 
+    if (resource === "public" && req.method === "GET") {
+        if (id === "products") {
+            sendJson(res, 200, publicProducts(db));
+            return;
+        }
+
+        if (id === "categories") {
+            sendJson(res, 200, publicCategories(db));
+            return;
+        }
+    }
+
+    if (resource === "admin") {
+        if (!requireAdmin(req, res, db)) return;
+
+        const adminResource = parts[2];
+        const adminId = parts[3];
+
+        if (adminResource === "summary" && req.method === "GET") {
+            sendJson(res, 200, {
+                products: db.products.length,
+                categories: db.categories.length,
+                orders: db.orders.length,
+                revenue: db.orders.reduce((sum, order) => sum + Number(order.total || 0), 0)
+            });
+            return;
+        }
+
+        if (adminResource === "products") {
+            if (req.method === "GET") {
+                sendJson(res, 200, adminProducts(db));
+                return;
+            }
+
+            if (req.method === "POST") {
+                const product = normalizeProduct(await readBody(req));
+                db.products.unshift(product);
+                await writeDb(db);
+                sendJson(res, 201, publicProduct(product));
+                return;
+            }
+
+            const index = db.products.findIndex((item) => item.id === adminId);
+            if (index < 0) {
+                sendError(res, 404, "Không tìm thấy sản phẩm.");
+                return;
+            }
+
+            if (req.method === "PUT") {
+                db.products[index] = normalizeProduct(await readBody(req), db.products[index]);
+                await writeDb(db);
+                sendJson(res, 200, publicProduct(db.products[index]));
+                return;
+            }
+
+            if (req.method === "DELETE") {
+                const [removed] = db.products.splice(index, 1);
+                await writeDb(db);
+                sendJson(res, 200, publicProduct(removed));
+                return;
+            }
+        }
+
+        if (adminResource === "categories") {
+            if (req.method === "GET") {
+                sendJson(res, 200, adminCategories(db));
+                return;
+            }
+
+            if (req.method === "POST") {
+                const category = normalizeCategory(await readBody(req));
+                db.categories.push(category);
+                await writeDb(db);
+                sendJson(res, 201, publicCategory(category));
+                return;
+            }
+
+            const index = db.categories.findIndex((item) => item.id === adminId);
+            if (index < 0) {
+                sendError(res, 404, "Không tìm thấy danh mục.");
+                return;
+            }
+
+            if (req.method === "PUT") {
+                db.categories[index] = normalizeCategory(await readBody(req), db.categories[index]);
+                await writeDb(db);
+                sendJson(res, 200, publicCategory(db.categories[index]));
+                return;
+            }
+
+            if (req.method === "DELETE") {
+                const [removed] = db.categories.splice(index, 1);
+                await writeDb(db);
+                sendJson(res, 200, publicCategory(removed));
+                return;
+            }
+        }
+
+        if (adminResource === "orders") {
+            if (req.method === "GET") {
+                sendJson(res, 200, db.orders);
+                return;
+            }
+
+            const index = db.orders.findIndex((item) => item.id === adminId);
+            if (index < 0) {
+                sendError(res, 404, "Không tìm thấy đơn hàng.");
+                return;
+            }
+
+            if (req.method === "PUT") {
+                db.orders[index] = {
+                    ...db.orders[index],
+                    ...(await readBody(req))
+                };
+                await writeDb(db);
+                sendJson(res, 200, db.orders[index]);
+                return;
+            }
+        }
+    }
+
     if (resource === "products") {
         if (req.method === "GET") {
-            sendJson(res, 200, db.products);
+            sendJson(res, 200, publicProducts(db));
             return;
         }
 
@@ -699,7 +1002,7 @@ async function handleApi(req, res, url) {
 
     if (resource === "categories") {
         if (req.method === "GET") {
-            sendJson(res, 200, db.categories);
+            sendJson(res, 200, publicCategories(db));
             return;
         }
 
@@ -798,6 +1101,18 @@ async function serveStatic(req, res, url) {
     }
 
     const pathname = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
+    const normalizedPathname = pathname.replaceAll("\\", "/");
+
+    if (
+        normalizedPathname.startsWith("/data/")
+        || normalizedPathname.startsWith("/.git/")
+        || normalizedPathname.includes("/.")
+        || ["/server.js", "/package.json", "/package-lock.json", "/render.yaml"].includes(normalizedPathname)
+    ) {
+        sendError(res, 404, "Không tìm thấy file.");
+        return;
+    }
+
     const filePath = path.resolve(rootDir, `.${pathname}`);
 
     if (!filePath.startsWith(rootDir)) {
@@ -810,7 +1125,10 @@ async function serveStatic(req, res, url) {
         const target = stat.isDirectory() ? path.join(filePath, "index.html") : filePath;
         const ext = path.extname(target).toLowerCase();
         const content = await fs.readFile(target);
-        res.writeHead(200, { "content-type": mimeTypes[ext] || "application/octet-stream" });
+        res.writeHead(200, {
+            "content-type": mimeTypes[ext] || "application/octet-stream",
+            ...securityHeaders()
+        });
         res.end(content);
     } catch {
         sendError(res, 404, "Không tìm thấy file.");
@@ -835,5 +1153,9 @@ const server = http.createServer(async (req, res) => {
 server.listen(port, "0.0.0.0", () => {
     console.log(`WebsiteClone server: http://0.0.0.0:${port}`);
     console.log(`Admin portal: http://0.0.0.0:${port}/admin.html`);
-    console.log("Admin account: admin / admin123");
+    console.log(`Database file: ${dataFile}`);
+
+    if (!adminPassword && !adminPasswordHash) {
+        console.warn("WARNING: ADMIN_PASSWORD or ADMIN_PASSWORD_HASH is not configured. Do not run production with the default admin password from seed data.");
+    }
 });

@@ -176,10 +176,10 @@ function renderOrders() {
 
 async function loadAll() {
     const [summary, categories, products, orders] = await Promise.all([
-        api("/api/summary"),
-        api("/api/categories"),
-        api("/api/products"),
-        api("/api/orders")
+        api("/api/admin/summary"),
+        api("/api/admin/categories"),
+        api("/api/admin/products"),
+        api("/api/admin/orders")
     ]);
 
     state.categories = categories;
@@ -196,8 +196,8 @@ async function loadAll() {
 async function loadPublicData() {
     const [summary, categories, products] = await Promise.all([
         api("/api/summary"),
-        api("/api/categories"),
-        api("/api/products")
+        api("/api/public/categories"),
+        api("/api/public/products")
     ]);
 
     state.categories = categories;
@@ -325,7 +325,7 @@ function bindEvents() {
 
         try {
             const id = $("#productId").value;
-            await api(id ? `/api/products/${id}` : "/api/products", {
+            await api(id ? `/api/admin/products/${id}` : "/api/admin/products", {
                 method: id ? "PUT" : "POST",
                 body: JSON.stringify(productPayload())
             });
@@ -342,7 +342,7 @@ function bindEvents() {
 
         try {
             const id = $("#categoryId").value;
-            await api(id ? `/api/categories/${id}` : "/api/categories", {
+            await api(id ? `/api/admin/categories/${id}` : "/api/admin/categories", {
                 method: id ? "PUT" : "POST",
                 body: JSON.stringify(categoryPayload())
             });
@@ -366,7 +366,7 @@ function bindEvents() {
 
         if (deleteProductId && confirm("X\u00f3a s\u1ea3n ph\u1ea9m n\u00e0y?")) {
             try {
-                await api(`/api/products/${deleteProductId}`, { method: "DELETE" });
+                await api(`/api/admin/products/${deleteProductId}`, { method: "DELETE" });
                 toast("\u0110\u00e3 x\u00f3a s\u1ea3n ph\u1ea9m.");
                 await loadAll();
             } catch (error) {
@@ -380,7 +380,7 @@ function bindEvents() {
 
         if (deleteCategoryId && confirm("X\u00f3a danh m\u1ee5c n\u00e0y?")) {
             try {
-                await api(`/api/categories/${deleteCategoryId}`, { method: "DELETE" });
+                await api(`/api/admin/categories/${deleteCategoryId}`, { method: "DELETE" });
                 toast("\u0110\u00e3 x\u00f3a danh m\u1ee5c.");
                 await loadAll();
             } catch (error) {
@@ -395,7 +395,7 @@ function bindEvents() {
         if (!orderId) return;
 
         try {
-            await api(`/api/orders/${orderId}`, {
+            await api(`/api/admin/orders/${orderId}`, {
                 method: "PUT",
                 body: JSON.stringify({ status: event.target.value })
             });

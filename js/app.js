@@ -123,18 +123,10 @@ function catalogFallbackProducts() {
 
 async function loadProductFeed() {
     try {
-        buildProductCollections(await fetchJson("/api/products"));
+        buildProductCollections(await fetchJson("/api/public/products"));
         return;
     } catch (apiError) {
         console.warn(apiError);
-    }
-
-    try {
-        const database = await fetchJson("data/db.json");
-        buildProductCollections(database.products || []);
-        return;
-    } catch (staticError) {
-        console.warn(staticError);
     }
 
     const fallbackProducts = catalogFallbackProducts();
