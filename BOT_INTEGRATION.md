@@ -8,7 +8,13 @@ Bot xử lý thanh toán/trả hàng, sau đó callback lại website để lưu
 ```env
 TELEGRAM_BOT_URL=https://t.me/YourBot
 BOT_WEBHOOK_SECRET=change-this-secret
+CANBOSO_API_BASE=https://canboso.com
+CANBOSO_API_KEY=put-the-key-on-server-only
+CANBOSO_MARKUP_VND=10000
 ```
+
+Không đặt `CANBOSO_API_KEY` trong HTML/CSS/JS frontend hoặc GitHub public.
+Key chỉ được đặt trong biến môi trường của VPS/Render.
 
 ## 1. Website Tạo Đơn
 
@@ -75,3 +81,26 @@ Body:
 ```
 
 Website sẽ lưu đơn thành `paid` để admin/CTV đối soát doanh thu.
+Nếu đơn có `canbosoProductId`, backend sẽ gọi Canboso `purchase` sau khi nhận callback paid.
+Kết quả purchase và account trả về được lưu trong order để bot/admin xử lý giao hàng.
+
+## 4. Mapping Sản Phẩm Canboso
+
+Trong admin panel, mỗi sản phẩm cần set:
+
+```text
+Canboso product_id: _id từ API /api/v2/telegram-buyer/products
+Giá gốc Canboso: giá vốn để tính lợi nhuận
+Markup: ví dụ 10000
+Slot months: chỉ dùng nếu sản phẩm cần slot_months
+Cần email khách: bật nếu Canboso yêu cầu customer_email
+```
+
+Backend tự dùng:
+
+```http
+POST https://canboso.com/api/v2/telegram-buyer/purchase
+Idempotency-Key: orderId-productId
+```
+
+API key chỉ nằm trên backend qua `CANBOSO_API_KEY`.

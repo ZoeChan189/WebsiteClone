@@ -25,6 +25,9 @@ const maxBodyBytes = Number(process.env.MAX_BODY_BYTES || 250000);
 const sessionMaxAgeMs = Number(process.env.SESSION_MAX_AGE_MS || 24 * 60 * 60 * 1000);
 const telegramBotUrl = (process.env.TELEGRAM_BOT_URL || "").replace(/\/+$/, "");
 const botWebhookSecret = process.env.BOT_WEBHOOK_SECRET || "";
+const canbosoApiBase = (process.env.CANBOSO_API_BASE || "https://canboso.com").replace(/\/+$/, "");
+const canbosoApiKey = process.env.CANBOSO_API_KEY || "";
+const canbosoMarkupVnd = Number(process.env.CANBOSO_MARKUP_VND || 10000);
 const sessions = new Map();
 const loginAttempts = new Map();
 
@@ -113,6 +116,57 @@ function githubRequest(method, apiPath, body = null) {
             }
         );
 
+        request.on("error", reject);
+        request.end(payload);
+    });
+}
+
+function httpsJsonRequest(method, targetUrl, body = null, headers = {}) {
+    return new Promise((resolve, reject) => {
+        const url = new URL(targetUrl);
+        const payload = body ? JSON.stringify(body) : "";
+        const request = https.request(
+            {
+                hostname: url.hostname,
+                path: `${url.pathname}${url.search}`,
+                method,
+                timeout: 20000,
+                headers: {
+                    "accept": "application/json",
+                    "content-type": "application/json",
+                    "content-length": Buffer.byteLength(payload),
+                    "user-agent": "storetainguyen-backend",
+                    ...headers
+                }
+            },
+            (response) => {
+                const chunks = [];
+
+                response.on("data", (chunk) => chunks.push(chunk));
+                response.on("end", () => {
+                    const raw = Buffer.concat(chunks).toString("utf8");
+                    let data = {};
+
+                    try {
+                        data = raw ? JSON.parse(raw) : {};
+                    } catch {
+                        data = { message: raw };
+                    }
+
+                    if (response.statusCode >= 200 && response.statusCode < 300) {
+                        resolve(data);
+                        return;
+                    }
+
+                    const error = new Error(data.message || `Upstream API error ${response.statusCode}`);
+                    error.statusCode = response.statusCode;
+                    error.retryAfter = response.headers["retry-after"] || "";
+                    reject(error);
+                });
+            }
+        );
+
+        request.on("timeout", () => request.destroy(new Error("Upstream API timeout")));
         request.on("error", reject);
         request.end(payload);
     });
@@ -392,7 +446,12 @@ function normalizeProduct(input, existing = {}) {
         rating: Number(input.rating ?? existing.rating ?? 4.6),
         sold: Number(input.sold ?? existing.sold ?? 0),
         status: input.status || existing.status || "active",
-        description: String(input.description || existing.description || "").trim()
+        description: String(input.description || existing.description || "").trim(),
+        canbosoProductId: String(input.canbosoProductId || existing.canbosoProductId || "").trim(),
+        canbosoCostPrice: input.canbosoCostPrice === "" ? null : Number(input.canbosoCostPrice ?? existing.canbosoCostPrice ?? 0),
+        canbosoMarkup: input.canbosoMarkup === "" ? null : Number(input.canbosoMarkup ?? existing.canbosoMarkup ?? canbosoMarkupVnd),
+        requiresCustomerEmail: Boolean(input.requiresCustomerEmail ?? existing.requiresCustomerEmail ?? false),
+        canbosoSlotMonths: input.canbosoSlotMonths === "" ? null : Number(input.canbosoSlotMonths ?? existing.canbosoSlotMonths ?? 0)
     };
 }
 
@@ -460,6 +519,8 @@ function publicOrder(order, req = null) {
         items: order.items || [],
         quantity: Number(order.quantity || 1),
         total: Number(order.total || 0),
+        costTotal: Number(order.costTotal || 0),
+        profitTotal: Number(order.profitTotal || 0),
         amount: Number(order.total || order.amount || 0),
         status: order.status || "created",
         source: order.source || "website",
@@ -468,11 +529,101 @@ function publicOrder(order, req = null) {
         paidAt: order.paidAt || "",
         deliveredAt: order.deliveredAt || "",
         botPaymentRef: order.botPaymentRef || "",
+        canbosoFulfillmentStatus: order.canbosoFulfillmentStatus || "",
+        canbosoFulfillmentMessage: order.canbosoFulfillmentMessage || "",
+        canbosoResults: order.canbosoResults || [],
+        deliveredAccounts: order.deliveredAccounts || [],
         note: order.note || "",
         createdAt: order.createdAt || "",
         updatedAt: order.updatedAt || "",
         telegramUrl: buildTelegramStartUrl(order.id),
         botOrderApi: req ? `${publicOrigin(req)}/api/bot/orders/${encodeURIComponent(order.id)}` : ""
+    };
+}
+
+function requireCanbosoConfig(res) {
+    if (!canbosoApiKey) {
+        sendError(res, 503, "CANBOSO_API_KEY chưa được cấu hình trên server.");
+        return false;
+    }
+
+    return true;
+}
+
+async function canbosoGet(pathname) {
+    const url = new URL(`${canbosoApiBase}${pathname}`);
+    url.searchParams.set("key", canbosoApiKey);
+    return httpsJsonRequest("GET", url.toString());
+}
+
+async function canbosoPurchaseItem(order, item, paymentInput = {}) {
+    if (!item.canbosoProductId) {
+        throw new Error(`Sản phẩm ${item.productName || item.productSlug} chưa mapping canbosoProductId.`);
+    }
+
+    const body = {
+        key: canbosoApiKey,
+        product_id: item.canbosoProductId,
+        quantity: Math.max(1, Number(item.quantity || 1))
+    };
+
+    const customerEmail =
+        paymentInput.customerEmail
+        || paymentInput.customer_email
+        || order.customerEmail
+        || item.options?.customerEmail
+        || item.options?.email
+        || "";
+
+    if (customerEmail) {
+        body.customer_email = String(customerEmail).trim();
+    }
+
+    if (item.canbosoSlotMonths) {
+        body.slot_months = Number(item.canbosoSlotMonths);
+    }
+
+    return httpsJsonRequest(
+        "POST",
+        `${canbosoApiBase}/api/v2/telegram-buyer/purchase`,
+        body,
+        {
+            "Idempotency-Key": `${order.id}-${item.productId || item.productSlug}`.slice(0, 128)
+        }
+    );
+}
+
+async function fulfillOrderWithCanboso(order, paymentInput = {}) {
+    if (!canbosoApiKey) {
+        return {
+            skipped: true,
+            reason: "CANBOSO_API_KEY chưa được cấu hình."
+        };
+    }
+
+    if (order.canbosoFulfillmentStatus === "completed") {
+        return {
+            skipped: true,
+            reason: "Đơn đã được purchase Canboso trước đó.",
+            results: order.canbosoResults || []
+        };
+    }
+
+    const results = [];
+
+    for (const item of order.items || []) {
+        const result = await canbosoPurchaseItem(order, item, paymentInput);
+        results.push({
+            productId: item.productId,
+            productSlug: item.productSlug,
+            canbosoProductId: item.canbosoProductId,
+            response: result
+        });
+    }
+
+    return {
+        skipped: false,
+        results
     };
 }
 
@@ -698,7 +849,14 @@ function publicCategories(db) {
 }
 
 function adminProducts(db) {
-    return (db.products || []).map(publicProduct);
+    return (db.products || []).map((product) => ({
+        ...publicProduct(product),
+        canbosoProductId: product.canbosoProductId || "",
+        canbosoCostPrice: product.canbosoCostPrice ?? null,
+        canbosoMarkup: product.canbosoMarkup ?? canbosoMarkupVnd,
+        requiresCustomerEmail: Boolean(product.requiresCustomerEmail),
+        canbosoSlotMonths: product.canbosoSlotMonths ?? null
+    }));
 }
 
 function adminCategories(db) {
@@ -763,6 +921,34 @@ async function handleApi(req, res, url) {
                 botRaw: input,
                 updatedAt: now
             };
+
+            if ((db.orders[index].status === "paid" || db.orders[index].status === "delivered")) {
+                try {
+                    const fulfillment = await fulfillOrderWithCanboso(db.orders[index], input);
+
+                    db.orders[index] = {
+                        ...db.orders[index],
+                        canbosoFulfillmentStatus: fulfillment.skipped ? (db.orders[index].canbosoFulfillmentStatus || "skipped") : "completed",
+                        canbosoFulfillmentMessage: fulfillment.reason || "",
+                        canbosoResults: fulfillment.results || db.orders[index].canbosoResults || [],
+                        deliveredAccounts: (fulfillment.results || [])
+                            .flatMap((item) => item.response?.deliveredAccounts || []),
+                        updatedAt: new Date().toISOString()
+                    };
+
+                    if (!fulfillment.skipped) {
+                        db.orders[index].status = "delivered";
+                        db.orders[index].deliveredAt = db.orders[index].deliveredAt || new Date().toISOString();
+                    }
+                } catch (error) {
+                    db.orders[index] = {
+                        ...db.orders[index],
+                        canbosoFulfillmentStatus: "failed",
+                        canbosoFulfillmentMessage: error.message || "Canboso purchase failed",
+                        updatedAt: new Date().toISOString()
+                    };
+                }
+            }
 
             await writeDb(db);
             sendJson(res, 200, publicOrder(db.orders[index], req));
@@ -1000,6 +1186,18 @@ async function handleApi(req, res, url) {
             return;
         }
 
+        if (adminResource === "canboso-products" && req.method === "GET") {
+            if (!requireCanbosoConfig(res)) return;
+            sendJson(res, 200, await canbosoGet("/api/v2/telegram-buyer/products"));
+            return;
+        }
+
+        if (adminResource === "canboso-balance" && req.method === "GET") {
+            if (!requireCanbosoConfig(res)) return;
+            sendJson(res, 200, await canbosoGet("/api/v2/telegram-buyer/balance"));
+            return;
+        }
+
         if (adminResource === "products") {
             if (req.method === "GET") {
                 sendJson(res, 200, adminProducts(db));
@@ -1200,6 +1398,7 @@ async function handleApi(req, res, url) {
 
                 const quantity = Math.max(1, Math.min(99, Number(item.quantity || 1)));
                 const unitPrice = priceToVnd(product.price);
+                const costPrice = priceToVnd(product.canbosoCostPrice || 0);
 
                 return {
                     productId: product.id,
@@ -1209,6 +1408,11 @@ async function handleApi(req, res, url) {
                     quantity,
                     unitPrice,
                     total: unitPrice * quantity,
+                    costPrice,
+                    profit: costPrice ? (unitPrice - costPrice) * quantity : null,
+                    canbosoProductId: product.canbosoProductId || "",
+                    canbosoSlotMonths: product.canbosoSlotMonths || null,
+                    requiresCustomerEmail: Boolean(product.requiresCustomerEmail),
                     options: item.options || {}
                 };
             }).filter(Boolean);
@@ -1226,6 +1430,7 @@ async function handleApi(req, res, url) {
                 userId: user?.id || null,
                 customerName: String(input.customerName || "").trim(),
                 customerPhone: String(input.customerPhone || "").trim(),
+                customerEmail: String(input.customerEmail || input.email || "").trim().toLowerCase(),
                 productId: firstItem.productId,
                 productSlug: firstItem.productSlug,
                 productName: firstItem.productName,
@@ -1233,6 +1438,8 @@ async function handleApi(req, res, url) {
                 items,
                 total,
                 amount: total,
+                costTotal: items.reduce((sum, item) => sum + Number(item.costPrice || 0) * item.quantity, 0),
+                profitTotal: items.reduce((sum, item) => sum + Number(item.profit || 0), 0),
                 status: "created",
                 source: "website",
                 note: String(input.note || "").trim(),

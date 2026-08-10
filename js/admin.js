@@ -117,9 +117,14 @@ function renderProducts() {
                     <strong>${escapeHTML(item.name)}</strong><br>
                     <small>${escapeHTML(item.slug)}</small>
                     ${item.icon ? `<br><small>Icon: ${escapeHTML(item.icon)}</small>` : ""}
+                    ${item.canbosoProductId ? `<br><small>Canboso: ${escapeHTML(item.canbosoProductId)}</small>` : ""}
                 </td>
                 <td>${escapeHTML(categoryName(item.categorySlug))}</td>
-                <td>${money(item.price)}${item.oldPrice ? `<br><small>Gi&aacute; c&#361;: ${money(item.oldPrice)}</small>` : ""}</td>
+                <td>
+                    ${money(item.price)}${item.oldPrice ? `<br><small>Gi&aacute; c&#361;: ${money(item.oldPrice)}</small>` : ""}
+                    ${item.canbosoCostPrice ? `<br><small>Gốc: ${money(item.canbosoCostPrice)}</small>` : ""}
+                    ${item.canbosoMarkup ? `<br><small>Markup: ${money(item.canbosoMarkup)}</small>` : ""}
+                </td>
                 <td>${Number(item.stock || 0)}</td>
                 <td>
                     <span class="status">${escapeHTML(item.status)}</span>
@@ -158,12 +163,12 @@ function renderOrders() {
     $("#ordersTable").innerHTML = state.orders
         .map((item) => `
             <tr>
-                <td><strong>${escapeHTML(item.customerName || "-")}</strong><br><small>${escapeHTML(item.customerPhone || "")}</small></td>
-                <td>${escapeHTML(productName(item.productId))} x ${Number(item.quantity || 1)}</td>
-                <td>${money(item.total)}</td>
+                <td><strong>${escapeHTML(item.id || "-")}</strong><br><small>${escapeHTML(item.telegramUsername || item.customerName || item.customerPhone || "")}</small></td>
+                <td>${escapeHTML(item.productName || productName(item.productId))} x ${Number(item.quantity || 1)}${item.canbosoFulfillmentStatus ? `<br><small>Canboso: ${escapeHTML(item.canbosoFulfillmentStatus)}</small>` : ""}</td>
+                <td>${money(item.total)}${item.costTotal ? `<br><small>Gốc: ${money(item.costTotal)}</small>` : ""}${item.profitTotal ? `<br><small>Lãi: ${money(item.profitTotal)}</small>` : ""}</td>
                 <td>
                     <select data-order-status="${escapeHTML(item.id)}">
-                        ${["pending", "paid", "delivered", "cancelled"].map((status) => `
+                        ${["created", "pending", "paid", "delivered", "failed", "cancelled"].map((status) => `
                             <option value="${status}" ${status === item.status ? "selected" : ""}>${status}</option>
                         `).join("")}
                     </select>
@@ -233,6 +238,11 @@ function resetProductForm(product = {}) {
     $("#productDiscount").value = product.discount || "";
     $("#productPrice").value = product.price || 0;
     $("#productOldPrice").value = product.oldPrice || "";
+    $("#productCanbosoProductId").value = product.canbosoProductId || "";
+    $("#productCanbosoCostPrice").value = product.canbosoCostPrice || "";
+    $("#productCanbosoMarkup").value = product.canbosoMarkup || "";
+    $("#productCanbosoSlotMonths").value = product.canbosoSlotMonths || "";
+    $("#productRequiresCustomerEmail").checked = Boolean(product.requiresCustomerEmail);
     $("#productStock").value = product.stock || 0;
     $("#productRating").value = product.rating || 4.6;
     $("#productSold").value = product.sold || 0;
@@ -261,6 +271,11 @@ function productPayload() {
         discount: $("#productDiscount").value,
         price: Number($("#productPrice").value),
         oldPrice: $("#productOldPrice").value,
+        canbosoProductId: $("#productCanbosoProductId").value,
+        canbosoCostPrice: $("#productCanbosoCostPrice").value,
+        canbosoMarkup: $("#productCanbosoMarkup").value,
+        canbosoSlotMonths: $("#productCanbosoSlotMonths").value,
+        requiresCustomerEmail: $("#productRequiresCustomerEmail").checked,
         stock: Number($("#productStock").value),
         rating: Number($("#productRating").value),
         sold: Number($("#productSold").value),
