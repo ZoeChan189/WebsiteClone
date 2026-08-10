@@ -15,7 +15,7 @@
         </a>
         <button class="admin-nav active" data-view="products">Sản phẩm</button>
         <button class="admin-nav" data-view="categories">Danh mục</button>
-        <button class="admin-nav" data-view="orders">Đơn hàng</button>
+        <button class="admin-nav hidden" data-view="orders" data-admin-only>Đơn hàng</button>
         <a class="admin-home" href="index.html">Về website</a>
     </aside>
 
@@ -28,15 +28,16 @@
             <form id="loginForm" class="token-form">
                 <input id="adminUsername" autocomplete="username" placeholder="Tài khoản">
                 <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Mật khẩu">
-                <button type="submit">Đăng nhập</button>
+                <button id="adminLoginButton" type="submit">Đăng nhập</button>
+                <button id="adminLogoutButton" class="hidden" type="button">Đăng xuất</button>
             </form>
         </header>
 
         <section class="stats-grid" id="statsGrid">
             <article><span>Sản phẩm</span><strong id="statProducts">0</strong></article>
             <article><span>Danh mục</span><strong id="statCategories">0</strong></article>
-            <article><span>Đơn hàng</span><strong id="statOrders">0</strong></article>
-            <article><span>Doanh thu</span><strong id="statRevenue">0đ</strong></article>
+            <article class="hidden" data-admin-only><span>Đơn hàng</span><strong id="statOrders">0</strong></article>
+            <article class="hidden" data-admin-only><span>Doanh thu</span><strong id="statRevenue">0đ</strong></article>
         </section>
 
         <section class="admin-panel active" id="productsPanel">
@@ -44,7 +45,7 @@
                 <h2>Sản phẩm</h2>
                 <div class="panel-tools">
                     <input id="productSearch" placeholder="Tìm sản phẩm, slug, danh mục">
-                    <button id="newProductButton">Thêm sản phẩm</button>
+                    <button id="newProductButton" class="hidden" data-admin-only>Thêm sản phẩm</button>
                 </div>
             </div>
             <form id="productForm" class="editor-form hidden">
@@ -84,7 +85,7 @@
         <section class="admin-panel" id="categoriesPanel">
             <div class="panel-head">
                 <h2>Danh mục</h2>
-                <button id="newCategoryButton">Thêm danh mục</button>
+                <button id="newCategoryButton" class="hidden" data-admin-only>Thêm danh mục</button>
             </div>
             <form id="categoryForm" class="editor-form hidden">
                 <input type="hidden" id="categoryId">
@@ -119,6 +120,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="js/admin.js"></script>
+    <script src="js/admin.js?v=6"></script>
 </body>
 </html>

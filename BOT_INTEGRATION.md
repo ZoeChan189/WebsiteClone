@@ -1,72 +1,64 @@
 # Telegram Bot Integration
 
-Website tạo đơn hàng và chuyển khách sang Telegram bot bằng `orderId`.
-Bot xử lý thanh toán/trả hàng, sau đó callback lại website để lưu doanh thu.
+Website tạo đơn và mở Telegram bằng `orderId`. Bot tạo QR, xác nhận thanh toán rồi gọi callback về website. API Canboso chỉ được gọi từ backend website.
 
-## Environment
+## Secrets
+
+Đặt các giá trị sau trong environment của VPS, không đặt trong HTML/CSS/JS, GitHub, ảnh chụp màn hình hoặc tin nhắn:
 
 ```env
 TELEGRAM_BOT_URL=https://t.me/YourBot
-BOT_WEBHOOK_SECRET=change-this-secret
+BOT_WEBHOOK_SECRET=<random-secret-1>
+BOT_WEBHOOK_SIGNING_SECRET=<random-secret-2>
+BOT_REQUIRE_SIGNATURE=true
+BOT_REQUIRE_PAYMENT_REF=true
 CANBOSO_API_BASE=https://canboso.com
-CANBOSO_API_KEY=put-the-key-on-server-only
-CANBOSO_MARKUP_VND=10000
+CANBOSO_API_KEY=<new-rotated-key>
 ```
 
-Không đặt `CANBOSO_API_KEY` trong HTML/CSS/JS frontend hoặc GitHub public.
-Key chỉ được đặt trong biến môi trường của VPS/Render.
+Hai bot secret phải khác nhau và dài tối thiểu 32 ký tự. API key đã từng được gửi qua chat phải được thu hồi và cấp lại trước production.
 
-## 1. Website Tạo Đơn
-
-Frontend gọi:
+## 1. Website tạo đơn
 
 ```http
 POST /api/orders
 Content-Type: application/json
 ```
 
-Body mua 1 sản phẩm:
-
 ```json
 {
   "productSlug": "tai-khoan-canva-pro",
   "quantity": 1,
+  "customerEmail": "customer@example.com",
   "options": {
-    "variant": "Dùng riêng",
+    "package": "Dùng riêng",
     "duration": "12 tháng"
   }
 }
 ```
 
-Response:
+Response có `orderId`, số tiền do server tính và `telegramUrl`. Frontend không được tự gửi giá.
 
-```json
-{
-  "orderId": "ord_xxxxx",
-  "status": "created",
-  "amount": 189000,
-  "telegramUrl": "https://t.me/YourBot?start=ord_xxxxx"
-}
+## 2. Bot lấy đơn
+
+Tạo timestamp Unix theo giây và ký đường dẫn chính xác:
+
+```text
+HMAC_SHA256(BOT_WEBHOOK_SIGNING_SECRET, timestamp + ".GET./api/bot/orders/ord_xxxxx")
 ```
-
-## 2. Bot Lấy Thông Tin Đơn
 
 ```http
 GET /api/bot/orders/ord_xxxxx
-X-Bot-Secret: change-this-secret
+X-Bot-Secret: <BOT_WEBHOOK_SECRET>
+X-Bot-Timestamp: <unix-seconds>
+X-Bot-Signature: sha256=<hex-signature>
 ```
 
-Response có `items`, `amount`, `status`, `createdAt`.
+Bot dùng đúng `amount` trong response để tạo QR.
 
-## 3. Bot Báo Thanh Toán Thành Công
+## 3. Bot callback thanh toán
 
-```http
-POST /api/bot/order-paid
-Content-Type: application/json
-X-Bot-Secret: change-this-secret
-```
-
-Body:
+Body JSON phải được giữ nguyên khi tính chữ ký:
 
 ```json
 {
@@ -75,32 +67,28 @@ Body:
   "status": "paid",
   "telegramUserId": "123456789",
   "telegramUsername": "customer_username",
-  "botPaymentRef": "bank_txn_or_bot_ref",
-  "paidAt": "2026-08-10T12:00:00+07:00"
+  "botPaymentRef": "unique-bank-transaction-id"
 }
 ```
 
-Website sẽ lưu đơn thành `paid` để admin/CTV đối soát doanh thu.
-Nếu đơn có `canbosoProductId`, backend sẽ gọi Canboso `purchase` sau khi nhận callback paid.
-Kết quả purchase và account trả về được lưu trong order để bot/admin xử lý giao hàng.
-
-## 4. Mapping Sản Phẩm Canboso
-
-Trong admin panel, mỗi sản phẩm cần set:
+Tạo timestamp Unix theo giây. Tính chữ ký hex:
 
 ```text
-Canboso product_id: _id từ API /api/v2/telegram-buyer/products
-Giá gốc Canboso: giá vốn để tính lợi nhuận
-Markup: ví dụ 10000
-Slot months: chỉ dùng nếu sản phẩm cần slot_months
-Cần email khách: bật nếu Canboso yêu cầu customer_email
+HMAC_SHA256(BOT_WEBHOOK_SIGNING_SECRET, timestamp + "." + rawJsonBody)
 ```
 
-Backend tự dùng:
+Gửi request:
 
 ```http
-POST https://canboso.com/api/v2/telegram-buyer/purchase
-Idempotency-Key: orderId-productId
+POST /api/bot/order-paid
+Content-Type: application/json
+X-Bot-Secret: <BOT_WEBHOOK_SECRET>
+X-Bot-Timestamp: <unix-seconds>
+X-Bot-Signature: sha256=<hex-signature>
 ```
 
-API key chỉ nằm trên backend qua `CANBOSO_API_KEY`.
+Server chỉ nhận callback trong 5 phút, bắt số tiền khớp chính xác và khóa `botPaymentRef` sau callback đầu tiên. Callback lặp dùng cùng order/ref không tạo giao dịch Canboso mới nhờ idempotency key.
+
+## 4. Mapping Canboso
+
+Admin cần cấu hình `Canboso product_id`, giá gốc, markup, slot months và yêu cầu email cho từng sản phẩm. Backend mua hàng sau callback hợp lệ. API key, giá vốn và response nội bộ không xuất hiện trong API public.

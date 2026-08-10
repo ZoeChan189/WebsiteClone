@@ -297,6 +297,43 @@ const catalog =
     {};
 
 
+function canonicalProductSlug(slug) {
+    const normalized =
+        slugify(
+            slug || ""
+        );
+
+    const aliases = {
+        "tai-khoan-chatgpt-plus": "chatgpt-plus",
+        "tai-khoan-chatgpt-plus-pro": "chatgpt-plus",
+        "tai-khoan-chatgpt-plus-pro-gpt-5-6": "chatgpt-plus",
+        "chatgpt-plus-pro": "chatgpt-plus",
+        "claude-ai-pro-max": "claude-ai",
+        "tai-khoan-claude-ai-pro-max": "claude-ai",
+        "tai-khoan-claude-ai": "claude-ai",
+        "tai-khoan-google-ai-pro": "google-ai-pro",
+        "tai-khoan-cursor-ai": "cursor-ai",
+        "tai-khoan-kling-ai": "kling-ai",
+        "goi-hbo-max-gia-re": "hbo-max",
+        "tai-khoan-disney-plus": "disney-plus",
+        "tai-khoan-amazon-prime-video": "amazon-prime-video",
+        "tai-khoan-crunchyroll-premium": "crunchyroll",
+        "tai-khoan-discord-nitro": "discord-nitro",
+        "tai-khoan-nordvpn": "nordvpn",
+        "nang-cap-google-one": "google-one",
+        "nang-cap-tai-khoan-quizlet-plus": "nang-cap-tai-khoan-quizlet-plus"
+    };
+
+    return aliases[normalized] || slug || "chatgpt-plus";
+}
+
+
+const canonicalSlug =
+    canonicalProductSlug(
+        requestedSlug
+    );
+
+
 function priceToNumber(value) {
     if (
         typeof value === "number" &&
@@ -459,7 +496,7 @@ function findCategoryProduct(slug) {
                     type:
                         "html",
                     html:
-                        `<p>${escapeHTML(item.name)} hiện có trên Kho Tài Khoản với giao diện đặt hàng mô phỏng đầy đủ cho bản clone UI.</p>`
+                        `<p>${escapeHTML(item.name)} hiện có tại storetainguyen. Vui lòng kiểm tra đúng gói và thời hạn trước khi đặt hàng.</p>`
                 }
             ],
 
@@ -525,18 +562,1062 @@ function findCategoryProduct(slug) {
 }
 
 
-const product =
-    catalog[
-        requestedSlug
-    ]
-    ||
-    findCategoryProduct(
-        requestedSlug
+function textLooksCorrupted(value) {
+    return /Ã|Â|Ä|áº|á»|Æ/.test(
+        String(value || "")
+    );
+}
+
+
+function blocksLookCorrupted(blocks) {
+    return (
+        blocks || []
     )
-    ||
-    catalog[
-        "chatgpt-plus"
+        .some(block =>
+            textLooksCorrupted(
+                [
+                    block.text,
+                    block.html,
+                    block.question,
+                    block.answer,
+                    ...(block.items || []),
+                    ...(block.rows || []).flat()
+                ]
+                    .join(" ")
+            )
+        );
+}
+
+
+function getProductCategoryName(item) {
+    const path =
+        item?.categoryPath || [];
+
+    const category =
+        path.find(entry =>
+            entry?.name &&
+            !/trang chủ/i.test(entry.name)
+        );
+
+    if (category?.name) {
+        return category.name;
+    }
+
+    const categoryEntry =
+        Object.values(window.CATEGORY_CATALOG || {})
+            .find(categoryItem =>
+                (categoryItem.products || [])
+                    .some(productItem => productItem.slug === item?.slug)
+            );
+
+    return categoryEntry?.name || "Tài khoản bản quyền";
+}
+
+
+function normalizeProductText(text) {
+    return String(text || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d");
+}
+
+
+function isChatGPTProduct(item) {
+    return /chatgpt|openai/.test(
+        normalizeProductText(
+            `${item?.name || ""} ${item?.slug || ""}`
+        )
+    );
+}
+
+
+function getServiceProfile(item) {
+    const source =
+        normalizeProductText(
+            `${item?.name || ""} ${item?.slug || ""}`
+        );
+
+    const profiles = [
+        {
+            match: /chatgpt|openai/,
+            label: "ChatGPT Plus",
+            purpose: "trợ lý AI hỗ trợ viết nội dung, học tập, lập trình, phân tích tài liệu và xử lý công việc hằng ngày.",
+            features: [
+                "Truy cập các tính năng AI nâng cao theo gói đang cung cấp.",
+                "Phù hợp cho học tập, làm việc văn phòng, viết nội dung, code và nghiên cứu.",
+                "Hỗ trợ sử dụng trên trình duyệt và các thiết bị cá nhân tương thích."
+            ]
+        },
+        {
+            match: /claude/,
+            label: "Claude AI",
+            purpose: "công cụ AI mạnh về đọc hiểu, tóm tắt, viết nội dung dài, phân tích tài liệu và hỗ trợ lập luận.",
+            features: [
+                "Phù hợp để xử lý tài liệu dài, viết bài, lập kế hoạch và brainstorm ý tưởng.",
+                "Hỗ trợ công việc học tập, nghiên cứu, marketing, content và lập trình.",
+                "Giao diện dễ dùng, thích hợp cho người cần trợ lý AI ổn định."
+            ]
+        },
+        {
+            match: /canva/,
+            label: "Canva Pro",
+            purpose: "nền tảng thiết kế trực tuyến cho banner, social post, CV, thuyết trình, video ngắn và bộ nhận diện thương hiệu.",
+            features: [
+                "Mở khóa template, ảnh, video, font và thành phần thiết kế premium.",
+                "Hỗ trợ xóa nền, resize thiết kế, Brand Kit và các công cụ sáng tạo nâng cao.",
+                "Phù hợp cho shop online, marketer, học sinh sinh viên và đội nhóm thiết kế."
+            ]
+        },
+        {
+            match: /youtube|ytb/,
+            label: "YouTube Premium",
+            purpose: "gói xem YouTube nâng cấp giúp giảm gián đoạn khi xem video, nghe nhạc và học tập.",
+            features: [
+                "Xem video không quảng cáo theo điều kiện gói.",
+                "Hỗ trợ phát nền, tải nội dung offline và sử dụng YouTube Music.",
+                "Phù hợp cho người xem YouTube thường xuyên trên điện thoại, máy tính bảng và máy tính."
+            ]
+        },
+        {
+            match: /netflix/,
+            label: "Netflix",
+            purpose: "dịch vụ xem phim, series và nội dung giải trí trực tuyến.",
+            features: [
+                "Xem phim và series theo chất lượng/gói được cung cấp.",
+                "Phù hợp cho nhu cầu giải trí cá nhân hoặc gia đình.",
+                "Có hướng dẫn đăng nhập và lưu ý sử dụng rõ ràng khi nhận tài khoản."
+            ]
+        },
+        {
+            match: /hbo|max|disney|amazon prime|prime video|crunchyroll|hulu|apple tv|iqiyi|vieon|fpt play|paramount|showtime/,
+            label: "Tài khoản xem phim",
+            purpose: "dịch vụ xem phim, series, hoạt hình, thể thao hoặc nội dung giải trí trực tuyến theo gói premium.",
+            features: [
+                "Truy cập kho phim, series hoặc nội dung độc quyền theo nền tảng đã chọn.",
+                "Hỗ trợ xem trên thiết bị tương thích như điện thoại, máy tính bảng, laptop hoặc TV.",
+                "Phù hợp cho nhu cầu giải trí gia đình, xem phim cuối tuần hoặc theo dõi nội dung quốc tế."
+            ]
+        },
+        {
+            match: /spotify/,
+            label: "Spotify Premium",
+            purpose: "dịch vụ nghe nhạc nâng cấp cho nhu cầu giải trí, làm việc và học tập.",
+            features: [
+                "Nghe nhạc mượt hơn theo quyền lợi của gói Premium.",
+                "Hỗ trợ playlist, podcast và trải nghiệm nghe nhạc đa thiết bị.",
+                "Phù hợp cho người nghe nhạc thường xuyên mỗi ngày."
+            ]
+        },
+        {
+            match: /discord|nitro/,
+            label: "Discord Nitro",
+            purpose: "gói nâng cấp Discord dành cho cộng đồng, game thủ, creator và người dùng thường xuyên voice/chat.",
+            features: [
+                "Mở khóa các quyền lợi Nitro theo gói như emoji, upload dung lượng cao hơn hoặc boost server.",
+                "Phù hợp cho người tham gia nhiều server, cộng đồng game hoặc đội nhóm online.",
+                "Có hướng dẫn kích hoạt và lưu ý sử dụng để hạn chế mua nhầm loại gói."
+            ]
+        },
+        {
+            match: /vpn|nord|pia|express|surfshark|hma/,
+            label: "VPN Premium",
+            purpose: "dịch vụ mạng riêng ảo hỗ trợ bảo mật kết nối, đổi khu vực truy cập và dùng Internet linh hoạt hơn.",
+            features: [
+                "Hỗ trợ đổi vị trí máy chủ theo gói đang cung cấp.",
+                "Tăng riêng tư khi dùng Wi-Fi công cộng hoặc làm việc từ xa.",
+                "Phù hợp cho nhu cầu truy cập nội dung quốc tế và bảo vệ kết nối cơ bản."
+            ]
+        },
+        {
+            match: /google one/,
+            label: "Google One",
+            purpose: "gói nâng cấp dung lượng Google giúp lưu trữ ảnh, tài liệu, Gmail và Drive thuận tiện hơn.",
+            features: [
+                "Tăng dung lượng cho Google Drive, Gmail và Google Photos theo gói đã chọn.",
+                "Phù hợp cho người cần backup ảnh, tài liệu học tập hoặc dữ liệu làm việc.",
+                "Một số gói có thể cần email Google để nâng cấp đúng tài khoản."
+            ]
+        },
+        {
+            match: /google one|drive|storage|onedrive|dropbox/,
+            label: "Gói lưu trữ",
+            purpose: "dịch vụ tăng dung lượng lưu trữ, sao lưu dữ liệu và đồng bộ tệp giữa nhiều thiết bị.",
+            features: [
+                "Tăng dung lượng lưu trữ cho ảnh, tài liệu và tệp làm việc.",
+                "Hỗ trợ đồng bộ dữ liệu trên nhiều thiết bị.",
+                "Phù hợp cho cá nhân, học tập, làm việc nhóm và backup dữ liệu."
+            ]
+        },
+        {
+            match: /quizlet|quizizz|duolingo|elsa|grammarly|coursera|udemy|skillshare|datacamp|codecademy|course hero/,
+            label: "Tài khoản học tập",
+            purpose: "dịch vụ học tập premium hỗ trợ luyện ngoại ngữ, ghi nhớ kiến thức, làm bài tập, học kỹ năng hoặc truy cập khóa học.",
+            features: [
+                "Mở khóa tài nguyên học tập hoặc tính năng nâng cao theo từng nền tảng.",
+                "Phù hợp cho học sinh, sinh viên, người tự học và người cần nâng cấp kỹ năng.",
+                "Có hướng dẫn đăng nhập/kích hoạt để bắt đầu học nhanh sau khi mua."
+            ]
+        },
+        {
+            match: /capcut|kling|invideo|heygen|krea|gamma|cursor|perplexity|freepik|pikbest|vecteezy/,
+            label: "Công cụ sáng tạo",
+            purpose: "công cụ hỗ trợ sáng tạo nội dung, thiết kế, dựng video, tạo ảnh hoặc tăng tốc quy trình làm việc.",
+            features: [
+                "Mở khóa các tính năng nâng cao theo từng nền tảng.",
+                "Phù hợp cho creator, marketer, designer, seller và người làm nội dung.",
+                "Giúp tiết kiệm thời gian so với thao tác thủ công."
+            ]
+        }
     ];
+
+    const profile =
+        profiles.find(itemProfile =>
+            itemProfile.match.test(source)
+        );
+
+    if (profile) {
+        return profile;
+    }
+
+    const categoryName =
+        getProductCategoryName(item);
+
+    if (/giải trí|giai tri/i.test(categoryName)) {
+        return {
+            label: item?.shortName || item?.name || "Tài khoản giải trí",
+            purpose: "dịch vụ giải trí số giúp xem phim, nghe nhạc, chơi game hoặc sử dụng nội dung premium thuận tiện hơn.",
+            features: [
+                "Tối ưu cho nhu cầu giải trí hằng ngày.",
+                "Có hướng dẫn đăng nhập và sử dụng sau khi đặt hàng.",
+                "Shop hỗ trợ xử lý khi phát sinh lỗi trong thời gian bảo hành."
+            ]
+        };
+    }
+
+    if (/học|hoc|khóa|khoa|ngoại ngữ|ngoai ngu/i.test(categoryName)) {
+        return {
+            label: item?.shortName || item?.name || "Tài khoản học tập",
+            purpose: "dịch vụ hỗ trợ học tập, luyện kỹ năng, học ngoại ngữ hoặc truy cập khóa học trực tuyến.",
+            features: [
+                "Phù hợp cho học sinh, sinh viên và người tự học.",
+                "Hỗ trợ truy cập tài nguyên học tập theo quyền lợi của gói.",
+                "Có hướng dẫn sử dụng để bắt đầu nhanh sau khi mua."
+            ]
+        };
+    }
+
+    return {
+        label: item?.shortName || item?.name || "Tài khoản bản quyền",
+        purpose: "dịch vụ tài khoản bản quyền giúp bạn dùng phần mềm hoặc nền tảng số với chi phí tối ưu hơn.",
+        features: [
+            "Gói được shop cấu hình theo thông tin sản phẩm và thời hạn đã chọn.",
+            "Phù hợp cho nhu cầu cá nhân, học tập, làm việc hoặc giải trí.",
+            "Có hỗ trợ trong quá trình kích hoạt và sử dụng."
+        ]
+    };
+}
+
+
+function buildRichContent(item) {
+    if (isChatGPTProduct(item)) {
+        return buildChatGPTContent(item);
+    }
+
+    const profile =
+        getServiceProfile(item);
+
+    const name =
+        item?.name || profile.label;
+
+    const categoryName =
+        getProductCategoryName(item);
+
+    const price =
+        getActiveDuration(item)?.price || item?.price || 0;
+
+    const oldPrice =
+        getActiveDuration(item)?.oldPrice || item?.oldPrice || 0;
+
+    return [
+        {
+            id: "overview",
+            type: "heading",
+            text: `Tổng quan ${profile.label}`,
+            toc: true
+        },
+        {
+            type: "paragraph",
+            html: `<strong>${escapeHTML(name)}</strong> là ${escapeHTML(profile.purpose)} Sản phẩm thuộc nhóm <strong>${escapeHTML(categoryName)}</strong>, phù hợp cho khách cần kích hoạt nhanh, có hướng dẫn rõ ràng và được hỗ trợ trong quá trình sử dụng.`
+        },
+        {
+            id: "features",
+            type: "heading",
+            text: "Tính năng nổi bật",
+            toc: true
+        },
+        {
+            type: "list",
+            items: profile.features
+        },
+        {
+            id: "benefits",
+            type: "heading",
+            text: "Quyền lợi khi mua tại storetainguyen",
+            toc: true
+        },
+        {
+            type: "list",
+            items: [
+                "Tư vấn đúng gói trước khi thanh toán để tránh mua nhầm nhu cầu.",
+                "Giao thông tin đơn hàng qua luồng tự động hoặc kênh hỗ trợ đã công bố.",
+                "Bảo hành theo thời hạn gói, hỗ trợ đổi lỗi nếu vấn đề thuộc phạm vi shop xử lý.",
+                "Có lịch sử đơn hàng trong hệ thống để đối soát khi cần hỗ trợ sau mua."
+            ]
+        },
+        {
+            id: "compare",
+            type: "heading",
+            text: "So sánh nhanh",
+            toc: true
+        },
+        {
+            type: "table",
+            headers: [
+                "Tiêu chí",
+                "Mua tại storetainguyen",
+                "Tự mua chính hãng"
+            ],
+            rows: [
+                [
+                    "Chi phí",
+                    price ? `Từ ${formatPrice(price)}` : "Tối ưu theo từng gói",
+                    oldPrice ? `Tham khảo ${formatPrice(oldPrice)}` : "Theo giá niêm yết chính hãng"
+                ],
+                [
+                    "Kích hoạt",
+                    "Có hướng dẫn và hỗ trợ",
+                    "Tự thao tác toàn bộ"
+                ],
+                [
+                    "Bảo hành",
+                    "Theo chính sách shop",
+                    "Theo chính sách nền tảng"
+                ]
+            ]
+        },
+        {
+            id: "buy-guide",
+            type: "heading",
+            text: "Hướng dẫn mua và kích hoạt",
+            toc: true
+        },
+        {
+            type: "ordered-list",
+            items: [
+                "Chọn đúng loại gói, thời hạn và số lượng cần mua.",
+                "Bấm Mua ngay hoặc Thêm vào giỏ hàng để tạo đơn.",
+                "Kiểm tra lại tên sản phẩm, giá và thông tin cần nâng cấp trước khi xác nhận.",
+                "Hoàn tất thanh toán theo hướng dẫn của hệ thống/bot.",
+                "Nhận tài khoản hoặc thông tin kích hoạt, sau đó liên hệ hỗ trợ nếu cần bảo hành."
+            ]
+        },
+        {
+            id: "notes",
+            type: "heading",
+            text: "Lưu ý trước khi mua",
+            toc: true
+        },
+        {
+            type: "list",
+            items: [
+                "Đọc kỹ mô tả gói, thời hạn và điều kiện bảo hành trước khi thanh toán.",
+                "Không lưu dữ liệu nhạy cảm trên tài khoản dùng chung nếu gói không phải tài khoản riêng.",
+                "Giữ lại mã đơn hàng để shop kiểm tra và đối soát khi cần hỗ trợ.",
+                "Một số dịch vụ có thể cần email/tên đăng nhập để nâng cấp đúng tài khoản."
+            ]
+        }
+    ];
+}
+
+
+function getActiveDuration(item) {
+    const firstVariant =
+        (item?.variants || [])
+            .find(variant => variant.available !== false)
+        ||
+        item?.variants?.[0];
+
+    return (
+        firstVariant?.durations || []
+    )
+        .find(duration => duration.available !== false)
+    ||
+    firstVariant?.durations?.[0]
+    ||
+    null;
+}
+
+
+function buildChatGPTContent(item) {
+    return [
+        {
+            id: "chatgpt-price",
+            type: "heading",
+            text: "Bảng giá ChatGPT Plus tại storetainguyen",
+            toc: true
+        },
+        {
+            type: "paragraph",
+            html: "Bảng dưới giúp bạn nhìn nhanh các gói phổ biến trước khi chọn biến thể phía trên. Giá trên form đặt hàng là giá cuối cùng theo thời điểm bạn mua."
+        },
+        {
+            type: "table",
+            headers: [
+                "Gói",
+                "Thời hạn",
+                "Giá tại shop",
+                "Giá chính hãng tham khảo"
+            ],
+            headerClasses: [
+                "dark",
+                "dark",
+                "green",
+                "slate"
+            ],
+            highlightColumns: [
+                2
+            ],
+            rows: [
+                [
+                    "Plus dùng chung",
+                    "1 tháng",
+                    "149.000đ",
+                    "~529.000đ"
+                ],
+                [
+                    "Plus dùng chung",
+                    "3 tháng",
+                    "399.000đ",
+                    "~1.569.000đ"
+                ],
+                [
+                    "Plus dùng chung",
+                    "6 tháng",
+                    "739.000đ",
+                    "~3.129.000đ"
+                ],
+                [
+                    "Plus dùng chung",
+                    "12 tháng",
+                    "1.249.000đ",
+                    "~6.249.000đ"
+                ],
+                [
+                    "Plus dùng riêng / chính chủ",
+                    "1 tháng",
+                    "449.000đ",
+                    "~529.000đ"
+                ]
+            ]
+        },
+        {
+            type: "callout",
+            html: "<strong>Lưu ý:</strong> gói Pro 5x/20x hoặc gói dài hạn chính chủ có thể hết hàng theo từng đợt. Nếu nút chọn bị khóa, hãy nhắn shop để được báo khi có lại."
+        },
+        {
+            id: "private-plus",
+            type: "heading",
+            text: "ChatGPT Plus dùng riêng / chính chủ phù hợp với ai?",
+            toc: true
+        },
+        {
+            type: "paragraph",
+            html: "Gói dùng riêng phù hợp khi bạn cần một tài khoản chỉ mình bạn sử dụng, dễ quản lý lịch sử chat và hạn chế rủi ro lẫn dữ liệu với người khác."
+        },
+        {
+            type: "list",
+            items: [
+                "<strong>Freelancer, marketer, dev:</strong> dùng ChatGPT gần như mỗi ngày để viết, code, phân tích và xử lý công việc.",
+                "<strong>Có dữ liệu khách hàng hoặc code riêng:</strong> không nên đặt nội dung nhạy cảm lên tài khoản dùng chung.",
+                "<strong>Cần đồng bộ lịch sử:</strong> muốn dùng cùng một tài khoản trên máy tính và điện thoại.",
+                "<strong>Muốn chủ động bảo mật:</strong> nhận tài khoản riêng, đổi mật khẩu và quản lý cách đăng nhập."
+            ]
+        },
+        {
+            type: "paragraph",
+            html: "Nếu bạn chỉ mới thử Plus, dùng vài lần mỗi tuần hoặc muốn tiết kiệm chi phí, gói dùng chung 1 tháng là lựa chọn dễ bắt đầu hơn."
+        },
+        {
+            id: "pro-5x-20x",
+            type: "heading",
+            text: "ChatGPT Pro 5x vs 20x khác gì Plus?",
+            toc: true
+        },
+        {
+            type: "paragraph",
+            html: "Gói Plus phù hợp đa số nhu cầu cá nhân. Gói Pro hướng tới người dùng nặng hơn, cần quota cao hơn, context lớn hơn và ưu tiên các tác vụ phân tích/code/research cường độ cao."
+        },
+        {
+            type: "list",
+            items: [
+                "<strong>Pro 5x:</strong> phù hợp dev, researcher hoặc người chat/code nhiều nhưng chưa cần mức quota tối đa.",
+                "<strong>Pro 20x:</strong> phù hợp power user, agency hoặc người chạy Agent mode, Deep Research, phân tích tài liệu liên tục.",
+                "<strong>Nếu chỉ viết lách, học tập, hỏi đáp hằng ngày:</strong> Plus dùng riêng thường đã đủ."
+            ]
+        },
+        {
+            id: "chatgpt-features",
+            type: "heading",
+            text: "ChatGPT Plus có gì nổi bật?",
+            toc: true
+        },
+        {
+            id: "gpt-models",
+            type: "subheading",
+            text: "1. Model AI nâng cao cho viết, học tập và công việc",
+            toc: true
+        },
+        {
+            type: "list",
+            items: [
+                "<strong>Phản hồi nhanh:</strong> phù hợp hỏi đáp, viết nội dung, sửa câu chữ, lập kế hoạch và brainstorming.",
+                "<strong>Suy luận sâu:</strong> phù hợp bài toán khó, code, phân tích logic và nghiên cứu có nhiều điều kiện.",
+                "<strong>Context dài hơn:</strong> đọc và xử lý tài liệu dài tốt hơn so với gói miễn phí."
+            ]
+        },
+        {
+            id: "research-agent",
+            type: "subheading",
+            text: "2. Deep Research và Agent mode",
+            toc: true
+        },
+        {
+            type: "list",
+            items: [
+                "<strong>Deep Research:</strong> phù hợp khi cần tổng hợp thông tin, lập báo cáo, so sánh nhiều nguồn hoặc nghiên cứu chủ đề mới.",
+                "<strong>Agent mode:</strong> hỗ trợ các chuỗi tác vụ nhiều bước như tra cứu, tổng hợp, lập bảng, chuẩn bị nội dung hoặc xử lý quy trình lặp lại."
+            ]
+        },
+        {
+            id: "files-images-code",
+            type: "subheading",
+            text: "3. Tạo ảnh, đọc tệp, phân tích dữ liệu và Canvas",
+            toc: true
+        },
+        {
+            type: "list",
+            items: [
+                "<strong>Tạo ảnh:</strong> dùng cho poster, thumbnail, mockup, ảnh minh họa và ý tưởng thiết kế.",
+                "<strong>Đọc tệp:</strong> hỗ trợ PDF, bảng tính, ảnh, tài liệu và code trong quá trình làm việc.",
+                "<strong>Phân tích dữ liệu:</strong> phù hợp xử lý bảng, tính toán, tóm tắt số liệu và dựng báo cáo.",
+                "<strong>Canvas:</strong> tiện khi viết/chỉnh sửa nội dung hoặc code theo từng phần thay vì chat tuyến tính."
+            ]
+        },
+        {
+            id: "free-plus-pro",
+            type: "heading",
+            text: "So sánh nhanh Free vs Plus vs Pro",
+            toc: true
+        },
+        {
+            type: "table",
+            headers: [
+                "Tiêu chí",
+                "Free",
+                "Plus",
+                "Pro"
+            ],
+            headerClasses: [
+                "dark",
+                "slate",
+                "green",
+                "green-dark"
+            ],
+            highlightColumns: [
+                2,
+                3
+            ],
+            rows: [
+                [
+                    "Chi phí chính hãng",
+                    "$0",
+                    "$20/tháng",
+                    "$200/tháng"
+                ],
+                [
+                    "Giá tại shop",
+                    "-",
+                    "Từ 149K/tháng",
+                    "Tùy đợt hàng"
+                ],
+                [
+                    "Tốc độ phản hồi",
+                    "Cơ bản",
+                    "Ưu tiên hơn",
+                    "Ưu tiên cao"
+                ],
+                [
+                    "Suy luận nâng cao",
+                    "Giới hạn",
+                    "Có",
+                    "Mạnh hơn"
+                ],
+                [
+                    "Đọc file / phân tích dữ liệu",
+                    "Giới hạn",
+                    "Có",
+                    "Có, quota cao hơn"
+                ],
+                [
+                    "Phù hợp nhất",
+                    "Dùng thử",
+                    "Học tập, công việc, content, code",
+                    "Power user, dev/research nặng"
+                ]
+            ]
+        },
+        {
+            id: "shared-private",
+            type: "heading",
+            text: "Dùng chung hay dùng riêng nên chọn gói nào?",
+            toc: true
+        },
+        {
+            type: "paragraph",
+            html: "<strong>Hai loại đều là ChatGPT Plus đầy đủ</strong>, khác nhau chủ yếu ở cách dùng tài khoản, độ riêng tư và chi phí."
+        },
+        {
+            type: "table",
+            headers: [
+                "Tiêu chí",
+                "Dùng chung",
+                "Dùng riêng / chính chủ"
+            ],
+            headerClasses: [
+                "dark",
+                "green",
+                "green-dark"
+            ],
+            highlightColumns: [
+                2
+            ],
+            rows: [
+                [
+                    "Ai nên chọn?",
+                    "Mới thử Plus, dùng vài lần/tuần, sinh viên, ngân sách thấp",
+                    "Dùng hầu như mỗi ngày, freelancer, marketer, dev, tài liệu khách hàng"
+                ],
+                [
+                    "Cách hoạt động",
+                    "Đăng nhập bằng tài khoản shop cấp",
+                    "Nhận tài khoản riêng, đổi mật khẩu và dùng một mình"
+                ],
+                [
+                    "Lịch sử chat",
+                    "Tách theo trình duyệt/môi trường dùng",
+                    "Chỉ mình bạn quản lý trên tài khoản riêng"
+                ],
+                [
+                    "Quota",
+                    "Có thể bị chia nếu nhiều người dùng cùng lúc",
+                    "Ổn định hơn vì chỉ một người dùng"
+                ],
+                [
+                    "Bảo mật",
+                    "Không nên nhập dữ liệu nhạy cảm",
+                    "Phù hợp hơn cho dữ liệu cá nhân/công việc"
+                ],
+                [
+                    "Chọn trên form",
+                    "Loại gói -> Dùng chung + thời hạn",
+                    "Loại gói -> Dùng riêng / chính chủ"
+                ]
+            ]
+        },
+        {
+            type: "list",
+            items: [
+                "<strong>Chưa chắc cần Plus lâu dài?</strong> Chọn dùng chung 1 tháng.",
+                "<strong>Đã quen Plus, dùng cả năm?</strong> Chọn dùng chung 12 tháng để tối ưu chi phí.",
+                "<strong>Làm việc với tài liệu khách/code riêng?</strong> Chọn dùng riêng/chính chủ.",
+                "<strong>Cần quota cao hơn Plus?</strong> Hỏi shop về Pro 5x/20x hoặc thử Plus chính chủ trước."
+            ]
+        },
+        {
+            id: "buy-guide",
+            type: "heading",
+            text: "Hướng dẫn mua và kích hoạt",
+            toc: true
+        },
+        {
+            type: "ordered-list",
+            items: [
+                "<strong>Chọn gói</strong> trong form phía trên, kiểm tra đúng loại gói và thời hạn.",
+                "<strong>Bấm Mua ngay</strong> hoặc thêm vào giỏ hàng để tạo đơn.",
+                "<strong>Thanh toán</strong> theo hướng dẫn của hệ thống/bot.",
+                "<strong>Nhận tài khoản</strong> hoặc thông tin kích hoạt theo đơn hàng.",
+                "<strong>Đăng nhập và kiểm tra</strong> quyền Plus/Pro; nếu có lỗi hãy giữ mã đơn để shop hỗ trợ."
+            ]
+        },
+        {
+            id: "warranty",
+            type: "heading",
+            text: "Bảo hành và chính sách hỗ trợ",
+            toc: true
+        },
+        {
+            type: "list",
+            items: [
+                "<strong>Bảo hành theo thời hạn gói</strong> nếu lỗi thuộc phạm vi shop xử lý.",
+                "<strong>Đổi tài khoản/gói tương đương</strong> khi phát sinh lỗi đăng nhập hoặc lỗi sử dụng do phía cấp tài khoản.",
+                "<strong>Hỗ trợ qua Zalo/Telegram</strong> trong khung giờ làm việc.",
+                "<strong>Không tự ý đổi thông tin quan trọng</strong> nếu hướng dẫn gói yêu cầu giữ nguyên để bảo hành."
+            ]
+        }
+    ];
+}
+
+
+function buildFAQ(item) {
+    if (isChatGPTProduct(item)) {
+        return [
+            {
+                question: "Mua ChatGPT Plus tại storetainguyen có dùng được ở Việt Nam không?",
+                answer: "Có. Sau khi nhận thông tin tài khoản hoặc gói nâng cấp, bạn đăng nhập và sử dụng bình thường theo hướng dẫn của shop."
+            },
+            {
+                question: "Có gói ChatGPT Plus vĩnh viễn không?",
+                answer: "Không nên coi bất kỳ gói Plus nào là lifetime chính thức. ChatGPT Plus là dịch vụ thuê bao, nên gói dài hạn thực tế vẫn là gói theo thời hạn."
+            },
+            {
+                question: "Dùng chung có an toàn không?",
+                answer: "Dùng chung giúp tiết kiệm chi phí nhưng không phù hợp để nhập hợp đồng, mật khẩu, dữ liệu khách hàng hoặc code nhạy cảm. Nếu cần riêng tư, hãy chọn dùng riêng."
+            },
+            {
+                question: "Dùng riêng / chính chủ là gì?",
+                answer: "Đây là gói tài khoản riêng shop giao cho bạn sử dụng một mình hoặc gói được xử lý theo điều kiện riêng của sản phẩm. Bạn nên đọc đúng mô tả biến thể trước khi mua."
+            },
+            {
+                question: "Pro 5x và Pro 20x nên chọn gói nào?",
+                answer: "Pro 5x hợp người dùng nặng vừa phải như dev/researcher. Pro 20x hợp nhu cầu rất cao, dùng liên tục hoặc cần quota lớn hơn. Nếu chưa chắc, Plus chính chủ thường là điểm bắt đầu hợp lý."
+            },
+            {
+                question: "ChatGPT Plus tạo được bao nhiêu ảnh?",
+                answer: "Hạn mức tạo ảnh có thể thay đổi theo chính sách nền tảng và tải hệ thống. Plus phù hợp nhu cầu tạo ảnh hằng ngày, nhưng không nên xem là gói tạo ảnh bulk số lượng rất lớn."
+            },
+            {
+                question: "Có gói 1 năm không?",
+                answer: "Có thể có gói 12 tháng tùy loại biến thể và tình trạng hàng. Nếu trên form không chọn được, hãy liên hệ shop để kiểm tra."
+            },
+            {
+                question: "Thanh toán xong bao lâu nhận được tài khoản?",
+                answer: "Tùy luồng xử lý tự động và tình trạng hàng. Bạn nên giữ mã đơn để shop kiểm tra nhanh nếu quá thời gian dự kiến."
+            },
+            {
+                question: "Nếu tài khoản lỗi hoặc bị khóa thì sao?",
+                answer: "Shop hỗ trợ theo chính sách bảo hành của gói. Trường hợp lỗi thuộc phạm vi bảo hành sẽ được kiểm tra và xử lý đổi thông tin hoặc phương án tương đương."
+            },
+            {
+                question: "Có nên mua kèm Claude AI hoặc Cursor AI không?",
+                answer: "Nếu viết dài và phân tích tài liệu nhiều, Claude là lựa chọn đáng cân nhắc. Nếu code trong IDE thường xuyên, Cursor phù hợp hơn. ChatGPT vẫn là lựa chọn đa dụng nhất cho phần lớn nhu cầu."
+            }
+        ];
+    }
+
+    const profile =
+        getServiceProfile(item);
+
+    const name =
+        item?.name || profile.label;
+
+    return [
+        {
+            question: `${profile.label} dùng để làm gì?`,
+            answer: `${escapeHTML(profile.label)} phù hợp cho nhu cầu ${escapeHTML(profile.purpose)}`
+        },
+        {
+            question: "Sau khi thanh toán bao lâu thì nhận được thông tin?",
+            answer: "Thông thường hệ thống sẽ xử lý nhanh qua luồng tự động hoặc kênh hỗ trợ. Nếu có phát sinh, bạn giữ mã đơn để shop kiểm tra."
+        },
+        {
+            question: `${name} có được bảo hành không?`,
+            answer: "Có. Sản phẩm được bảo hành theo thời hạn gói và điều kiện sử dụng đã công bố trên trang sản phẩm."
+        },
+        {
+            question: "Tôi cần chuẩn bị thông tin gì trước khi mua?",
+            answer: "Bạn nên chuẩn bị email, tên đăng nhập hoặc thông tin tài khoản cần nâng cấp nếu sản phẩm yêu cầu. Không chia sẻ mật khẩu nếu shop không cần để xử lý."
+        }
+    ];
+}
+
+
+function buildGeneratedReviews(item) {
+    const profile =
+        getServiceProfile(item);
+
+    const service =
+        profile.label;
+
+    return [
+        {
+            id: 8,
+            name: "Minh Anh",
+            date: "08/08/2026",
+            rating: 5,
+            verified: true,
+            text: `${service} dùng ổn, shop hướng dẫn rõ nên thao tác khá nhanh.`,
+            tags: ["Giao nhanh", "Hỗ trợ tốt"],
+            helpful: 3
+        },
+        {
+            id: 7,
+            name: "Quốc Huy",
+            date: "07/08/2026",
+            rating: 5,
+            verified: true,
+            text: `Giá hợp lý, cần hỗ trợ thì nhắn được phản hồi nhanh. Sẽ mua lại nếu cần gia hạn ${service}.`,
+            tags: ["Đáng tiền"],
+            helpful: 2
+        },
+        {
+            id: 6,
+            name: "Thanh Trúc",
+            date: "06/08/2026",
+            rating: 4,
+            verified: true,
+            text: "Lần đầu dùng cần đọc kỹ hướng dẫn, sau đó sử dụng bình thường.",
+            tags: ["Hướng dẫn rõ"],
+            helpful: 1
+        },
+        {
+            id: 5,
+            name: "Gia Bảo",
+            date: "05/08/2026",
+            rating: 5,
+            verified: true,
+            text: `Mua ${service} để phục vụ công việc, trải nghiệm tốt trong tầm giá.`,
+            tags: ["Ổn định"],
+            helpful: 1
+        }
+    ];
+}
+
+
+function buildReviewSummary(item) {
+    const sold =
+        Number(item?.sold || 0) || 500;
+
+    const total =
+        Math.max(
+            Number(item?.reviewCount || 0) || 0,
+            Math.min(1187, Math.round(sold * 0.12))
+        );
+
+    const five =
+        Math.round(total * 0.72);
+
+    const four =
+        Math.round(total * 0.22);
+
+    const three =
+        Math.max(0, total - five - four);
+
+    return {
+        satisfaction: 96,
+        totalPages: Math.max(1, Math.ceil(total / 10)),
+        distribution: {
+            5: five,
+            4: four,
+            3: three,
+            2: 0,
+            1: 0
+        },
+        mentions: [
+            "Giao nhanh",
+            "Hỗ trợ tốt",
+            "Đáng tiền",
+            "Hướng dẫn rõ"
+        ]
+    };
+}
+
+
+function buildRelatedProducts(item) {
+    const allProducts =
+        [
+            ...Object.values(catalog || {}),
+            ...Object.values(window.CATEGORY_CATALOG || {})
+                .flatMap(category => category.products || [])
+        ]
+            .filter(candidate =>
+                candidate &&
+                candidate.slug &&
+                candidate.slug !== item?.slug
+            );
+
+    const seen =
+        new Set();
+
+    const categorySlug =
+        Object.values(window.CATEGORY_CATALOG || {})
+            .find(category =>
+                (category.products || [])
+                    .some(productItem => productItem.slug === item?.slug)
+            )
+            ?.slug;
+
+    return allProducts
+        .filter(candidate => {
+            if (seen.has(candidate.slug)) {
+                return false;
+            }
+
+            seen.add(candidate.slug);
+
+            if (!categorySlug) {
+                return true;
+            }
+
+            return Object.values(window.CATEGORY_CATALOG || {})
+                .find(category => category.slug === categorySlug)
+                ?.products
+                ?.some(productItem => productItem.slug === candidate.slug);
+        })
+        .slice(0, 4)
+        .map(candidate => ({
+            slug: candidate.slug,
+            name: candidate.name,
+            image: candidate.image,
+            discount: candidate.discount || "",
+            rating: candidate.rating || 4.8,
+            sold: candidate.sold || "1,2k đã bán",
+            price: candidate.price || getActiveDuration(candidate)?.price || 0,
+            oldPrice: candidate.oldPrice || getActiveDuration(candidate)?.oldPrice || 0,
+            outOfStock: candidate.outOfStock
+        }));
+}
+
+
+function enrichProduct(item) {
+    if (!item) {
+        return item;
+    }
+
+    const enriched =
+        {
+            ...item
+        };
+
+    if (
+        isChatGPTProduct(enriched)
+        &&
+        (
+            !enriched.deal?.enabled
+            ||
+            !Number.isFinite(
+                Number(
+                    enriched.deal.countdownSeconds
+                )
+            )
+            ||
+            Number(
+                enriched.deal.countdownSeconds
+            )
+            <=
+            0
+        )
+    ) {
+        enriched.deal = {
+            enabled:
+                true,
+            soldPercent:
+                30,
+            remaining:
+                626,
+            countdownSeconds:
+                (25 * 86400)
+                +
+                (12 * 3600)
+                +
+                (14 * 60)
+                +
+                52
+        };
+    }
+
+    if (
+        isChatGPTProduct(enriched)
+        ||
+        !enriched.content?.length ||
+        enriched.content.length < 4 ||
+        blocksLookCorrupted(enriched.content)
+    ) {
+        enriched.content =
+            buildRichContent(enriched);
+    }
+
+    if (
+        isChatGPTProduct(enriched)
+        ||
+        !enriched.faq?.length ||
+        enriched.faq.length < 3 ||
+        blocksLookCorrupted(enriched.faq)
+    ) {
+        enriched.faq =
+            buildFAQ(enriched);
+    }
+
+    if (
+        !enriched.reviews?.length ||
+        enriched.reviews.length < 4 ||
+        blocksLookCorrupted(enriched.reviews)
+    ) {
+        enriched.reviews =
+            buildGeneratedReviews(enriched);
+    }
+
+    if (!enriched.reviewSummary) {
+        enriched.reviewSummary =
+            buildReviewSummary(enriched);
+    }
+
+    if (!enriched.related?.length) {
+        enriched.related =
+            buildRelatedProducts(enriched);
+    }
+
+    enriched.updated =
+        enriched.updated && !textLooksCorrupted(enriched.updated)
+            ? enriched.updated
+            : "[Cập nhật lần cuối: Tháng 8/2026]";
+
+    return enriched;
+}
+
+
+const product =
+    enrichProduct(
+        catalog[
+            canonicalSlug
+        ]
+        ||
+        findCategoryProduct(
+            canonicalSlug
+        )
+        ||
+        catalog[
+            requestedSlug
+        ]
+        ||
+        findCategoryProduct(
+            requestedSlug
+        )
+        ||
+        catalog[
+            "chatgpt-plus"
+        ]
+    );
 
 
 /* ==========================================================
@@ -592,7 +1673,7 @@ function updateMeta() {
             product.name
         )
         +
-        " | Kho Tài Khoản";
+        " | storetainguyen";
 
 
     const meta =
@@ -1407,13 +2488,28 @@ function renderDeal() {
     const deal =
         product.deal;
 
+    const dealBox =
+        $("#productDealBox");
+
 
     if (
         !deal
         ?.enabled
+        ||
+        !Number.isFinite(
+            Number(
+                deal.countdownSeconds
+            )
+        )
+        ||
+        Number(
+            deal.countdownSeconds
+        )
+        <=
+        0
     ) {
 
-        $("#productDealBox")
+        dealBox
             .style.display =
             "none";
 
@@ -1421,11 +2517,62 @@ function renderDeal() {
 
     }
 
+    dealBox
+        .style.display =
+        "";
+
+    countdownSeconds =
+        Number.isFinite(
+            Number(
+                countdownSeconds
+            )
+        )
+        &&
+        Number(
+            countdownSeconds
+        )
+        >
+        0
+            ? Number(
+                countdownSeconds
+            )
+            : Number(
+                deal.countdownSeconds
+            );
+
+
+    const soldPercent = Math.max(
+        0,
+        Math.min(
+            100,
+            Number.isFinite(
+                Number(
+                    deal.soldPercent
+                )
+            )
+                ? Number(
+                    deal.soldPercent
+                )
+                : 0
+        )
+    );
+    const remaining = Math.max(
+        0,
+        Number.isFinite(
+            Number(
+                deal.remaining
+            )
+        )
+            ? Number(
+                deal.remaining
+            )
+            : 0
+    );
 
     $("#dealProgressFill")
         .style.width =
         (
-            deal.soldPercent
+            soldPercent
             +
             "%"
         );
@@ -1436,7 +2583,7 @@ function renderDeal() {
         (
             "Đã bán "
             +
-            deal.soldPercent
+            soldPercent
             +
             "%"
         );
@@ -1451,7 +2598,7 @@ function renderDeal() {
                 "vi-VN"
             )
                 .format(
-                    deal.remaining
+                    remaining
                 )
         );
 
@@ -1462,6 +2609,20 @@ function renderDeal() {
 
 
 function updateCountdown() {
+
+    countdownSeconds =
+        Number.isFinite(
+            Number(
+                countdownSeconds
+            )
+        )
+            ? Math.max(
+                0,
+                Number(
+                    countdownSeconds
+                )
+            )
+            : 0;
 
     const days =
         Math.floor(
@@ -2210,19 +3371,11 @@ function renderRelated() {
                 item => {
 
                     const href =
-                        catalog[
+                        "product.html?slug="
+                        +
+                        encodeURIComponent(
                             item.slug
-                        ]
-                            ?
-                            (
-                                "product.html?slug="
-                                +
-                                encodeURIComponent(
-                                    item.slug
-                                )
-                            )
-                            :
-                            "#";
+                        );
 
 
                     return `
@@ -2230,13 +3383,7 @@ function renderRelated() {
                             class="related-card"
                             href="${href}"
                             ${
-                                href
-                                ===
-                                "#"
-                                    ?
-                                    'data-related-placeholder="1"'
-                                    :
-                                    ""
+                                ""
                             }
                         >
 
@@ -2925,6 +4072,10 @@ function filteredReviews() {
         reviewSort
         ===
         "rating_desc"
+        ||
+        reviewSort
+        ===
+        "highest"
     ) {
 
         reviews.sort(
@@ -2941,6 +4092,10 @@ function filteredReviews() {
         reviewSort
         ===
         "rating_asc"
+        ||
+        reviewSort
+        ===
+        "lowest"
     ) {
 
         reviews.sort(
@@ -3590,6 +4745,11 @@ function updateQuantity() {
 
 function selectedOrderInfo() {
 
+    const accountIdentifier =
+        $("#upgradeAccountInput")
+            ?.value
+            ?.trim() || "";
+
     return {
 
         slug:
@@ -3609,6 +4769,13 @@ function selectedOrderInfo() {
                 ?.label
             ||
             "",
+
+        accountIdentifier,
+
+        privateAccount:
+            $("#privateAccount")?.checked
+                ? "Có"
+                : "Không",
 
         quantity,
 
@@ -3664,8 +4831,19 @@ async function createTelegramOrder() {
                                     info.variant,
 
                                 duration:
-                                    info.duration
+                                    info.duration,
+
+                                privateAccount:
+                                    info.privateAccount,
+
+                                accountIdentifier:
+                                    info.accountIdentifier
                             },
+
+                            customerEmail:
+                                info.accountIdentifier.includes("@")
+                                    ? info.accountIdentifier
+                                    : "",
 
                             note:
                                 "Telegram bot checkout"
@@ -4529,6 +5707,22 @@ function init() {
     if (
         product.deal
             ?.enabled
+        &&
+        Number.isFinite(
+            Number(
+                product
+                    .deal
+                    .countdownSeconds
+            )
+        )
+        &&
+        Number(
+            product
+                .deal
+                .countdownSeconds
+        )
+        >
+        0
     ) {
 
         setInterval(
@@ -4545,9 +5739,11 @@ function init() {
                 ) {
 
                     countdownSeconds =
-                        product
-                            .deal
-                            .countdownSeconds;
+                        Number(
+                            product
+                                .deal
+                                .countdownSeconds
+                        );
 
                 }
 

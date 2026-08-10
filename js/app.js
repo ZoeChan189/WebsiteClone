@@ -229,7 +229,7 @@ function productCardTemplate(product, options = {}) {
 
                 <a href="${productHref}">
                     <img
-                        src="${product.image}"
+                        src="${escapeHTML(product.image)}"
                         alt="${escapeHTML(product.name)}"
                         loading="lazy"
                     >
@@ -503,7 +503,10 @@ const heroSlides = [
             "https://khotaikhoan.net/wp-content/uploads/2026/05/chatgpt-plus-banner.webp",
 
         alt:
-            "ChatGPT Plus"
+            "ChatGPT Plus",
+
+        href:
+            "product.html?slug=chatgpt-plus"
     },
 
     {
@@ -511,7 +514,10 @@ const heroSlides = [
             "https://khotaikhoan.net/wp-content/uploads/2026/05/claude-ai-pro-max-banner.webp",
 
         alt:
-            "Claude AI Pro Max"
+            "Claude AI Pro Max",
+
+        href:
+            "product.html?slug=claude-ai"
     },
 
     {
@@ -519,7 +525,10 @@ const heroSlides = [
             "https://khotaikhoan.net/wp-content/uploads/2026/05/google-ai-pro-banner.webp",
 
         alt:
-            "Google AI Pro"
+            "Google AI Pro",
+
+        href:
+            "product.html?slug=google-ai-pro"
     }
 
 ];
@@ -530,6 +539,9 @@ let heroIndex = 0;
 
 const heroImage =
     $("#heroImage");
+
+const heroMainLink =
+    $("#heroMainLink");
 
 const heroDots =
     $("#heroDots");
@@ -613,6 +625,11 @@ function updateHero() {
 
             heroImage.alt =
                 slide.alt;
+
+            if (heroMainLink) {
+                heroMainLink.href =
+                    slide.href;
+            }
 
             heroImage.style.opacity =
                 "1";
@@ -830,7 +847,7 @@ const reviews = [
 
     {
         text:
-            "Bên khotaikhoan giao tài khoản nhanh, thanh toán xong 2-3 phút là có. Mình mua nhiều lần rồi, lần nào cũng ok.",
+            "Bên storetainguyen hỗ trợ nhanh, quy trình đặt hàng rõ ràng và dễ theo dõi.",
 
         name:
             "Đỗ Văn Nam",

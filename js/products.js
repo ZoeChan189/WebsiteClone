@@ -504,7 +504,7 @@ window.PRODUCT_CATALOG = {
                     "heading",
 
                 text:
-                    "Bảng giá ChatGPT Plus tại Kho Tài Khoản cập nhật 7/2026",
+                    "Bảng giá ChatGPT Plus tại storetainguyen",
 
                 toc:
                     true
@@ -1230,7 +1230,7 @@ window.PRODUCT_CATALOG = {
                     "heading",
 
                 text:
-                    "Bảo hành & chính sách tại Kho Tài Khoản",
+                    "Bảo hành & chính sách tại storetainguyen",
 
                 toc:
                     true
@@ -1267,7 +1267,7 @@ window.PRODUCT_CATALOG = {
             {
 
                 question:
-                    "Mua ChatGPT Plus ở Kho Tài Khoản có dùng được tại Việt Nam không?",
+                    "Mua ChatGPT Plus ở storetainguyen có dùng được tại Việt Nam không?",
 
                 answer:
                     "Trang tham chiếu mô tả rằng tài khoản được giao có thể đăng nhập và sử dụng tại Việt Nam; hãy đọc điều kiện của biến thể trước khi mua."

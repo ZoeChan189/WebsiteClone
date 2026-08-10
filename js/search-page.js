@@ -168,6 +168,13 @@
                     </a>
                 `)
                 .join("");
+
+        grid.querySelectorAll("img").forEach((image) => {
+            image.addEventListener("error", () => {
+                image.src = "assets/images/storetainguyen-logo.png";
+                image.style.objectFit = "contain";
+            }, { once: true });
+        });
     }
 
     document

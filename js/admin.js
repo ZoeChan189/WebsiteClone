@@ -4,7 +4,7 @@ const state = {
     products: [],
     categories: [],
     orders: [],
-    authToken: localStorage.getItem("adminSession") || ""
+    authenticated: false
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -37,7 +37,6 @@ async function api(path, options = {}) {
         ...options,
         headers: {
             "content-type": "application/json",
-            "authorization": state.authToken ? `Bearer ${state.authToken}` : "",
             ...(options.headers || {})
         }
     });
@@ -45,19 +44,33 @@ async function api(path, options = {}) {
     const data = await res.json();
 
     if (!res.ok) {
-        throw new Error(data.error || "API lỗi.");
+        const error = new Error(data.error || "API lỗi.");
+        error.status = res.status;
+        throw error;
     }
 
     return data;
 }
 
 function clearAdminSession() {
-    state.authToken = "";
-    localStorage.removeItem("adminSession");
+    setAuthenticated(false);
 }
 
 function isAuthError(error) {
-    return /401|\u0111\u0103ng nh\u1eadp|dang nhap|Ch\u01b0a \u0111\u0103ng nh\u1eadp|Unauthorized/i.test(error.message || "");
+    return error.status === 401
+        || /\u0111\u0103ng nh\u1eadp|dang nhap|Ch\u01b0a \u0111\u0103ng nh\u1eadp|Unauthorized/i.test(error.message || "");
+}
+
+function setAuthenticated(authenticated) {
+    state.authenticated = Boolean(authenticated);
+    document.body.classList.toggle("admin-authenticated", state.authenticated);
+    document.querySelectorAll("[data-admin-only]").forEach((element) => {
+        element.classList.toggle("hidden", !state.authenticated);
+    });
+    $("#adminUsername").classList.toggle("hidden", state.authenticated);
+    $("#adminPassword").classList.toggle("hidden", state.authenticated);
+    $("#adminLoginButton").classList.toggle("hidden", state.authenticated);
+    $("#adminLogoutButton").classList.toggle("hidden", !state.authenticated);
 }
 
 function handleError(error) {
@@ -113,7 +126,7 @@ function renderProducts() {
         .map((item) => `
             <tr>
                 <td>
-                    <img src="${escapeHTML(item.image || item.icon || "")}" alt="">
+                    ${item.image || item.icon ? `<img data-admin-product-image src="${escapeHTML(item.image || item.icon)}" alt="${escapeHTML(item.name)}" loading="lazy">` : ""}
                     <strong>${escapeHTML(item.name)}</strong><br>
                     <small>${escapeHTML(item.slug)}</small>
                     ${item.icon ? `<br><small>Icon: ${escapeHTML(item.icon)}</small>` : ""}
@@ -131,7 +144,7 @@ function renderProducts() {
                     ${item.discount ? `<br><small>${escapeHTML(item.discount)}</small>` : ""}
                 </td>
                 <td>
-                    <div class="row-actions">
+                    <div class="row-actions ${state.authenticated ? "" : "hidden"}">
                         <button data-edit-product="${escapeHTML(item.id)}">S&#7917;a</button>
                         <button class="danger" data-delete-product="${escapeHTML(item.id)}">X&oacute;a</button>
                     </div>
@@ -139,6 +152,13 @@ function renderProducts() {
             </tr>
         `)
         .join("");
+
+    $("#productsTable").querySelectorAll("[data-admin-product-image]").forEach((image) => {
+        image.addEventListener("error", () => {
+            image.src = "assets/images/storetainguyen-logo.png";
+            image.classList.add("image-fallback");
+        }, { once: true });
+    });
 }
 
 function renderCategories() {
@@ -149,7 +169,7 @@ function renderCategories() {
                 <td>${escapeHTML(item.slug)}</td>
                 <td><span class="status">${escapeHTML(item.status)}</span></td>
                 <td>
-                    <div class="row-actions">
+                    <div class="row-actions ${state.authenticated ? "" : "hidden"}">
                         <button data-edit-category="${escapeHTML(item.id)}">S&#7917;a</button>
                         <button class="danger" data-delete-category="${escapeHTML(item.id)}">X&oacute;a</button>
                     </div>
@@ -190,6 +210,7 @@ async function loadAll() {
     state.categories = categories;
     state.products = products;
     state.orders = orders;
+    setAuthenticated(true);
 
     renderStats(summary);
     fillCategorySelect();
@@ -208,6 +229,7 @@ async function loadPublicData() {
     state.categories = categories;
     state.products = products;
     state.orders = [];
+    setAuthenticated(false);
 
     renderStats(summary);
     fillCategorySelect();
@@ -307,15 +329,28 @@ function bindEvents() {
                     password: $("#adminPassword").value
                 })
             });
-            state.authToken = result.token;
-            localStorage.setItem("adminSession", result.token);
+
+            if (result.user.role !== "admin") {
+                throw new Error("Tài khoản này không có quyền admin.");
+            }
+
             localStorage.setItem("adminUsername", result.user.username);
             $("#adminPassword").value = "";
+            setAuthenticated(true);
             toast(`\u0110\u00e3 \u0111\u0103ng nh\u1eadp: ${result.user.name}`);
             await loadAll();
         } catch (error) {
             handleError(error);
         }
+    });
+
+    $("#adminLogoutButton").addEventListener("click", async () => {
+        try {
+            await api("/api/auth/logout", { method: "POST" });
+        } catch {}
+        clearAdminSession();
+        await loadPublicData();
+        toast("\u0110\u00e3 \u0111\u0103ng xu\u1ea5t.");
     });
 
     document.querySelectorAll(".admin-nav").forEach((button) => {
@@ -423,4 +458,20 @@ function bindEvents() {
 }
 
 bindEvents();
-(state.authToken ? loadAll() : loadPublicData()).catch(handleError);
+
+async function initialize() {
+    try {
+        const user = await api("/api/auth/me");
+
+        if (user.role !== "admin") {
+            throw new Error("T\u00e0i kho\u1ea3n hi\u1ec7n t\u1ea1i kh\u00f4ng c\u00f3 quy\u1ec1n admin.");
+        }
+
+        await loadAll();
+    } catch {
+        clearAdminSession();
+        await loadPublicData();
+    }
+}
+
+initialize().catch(handleError);

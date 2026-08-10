@@ -1041,6 +1041,13 @@
     }
 
     async function createTelegramCartOrder() {
+        const accountIdentifier = document.querySelector("#upgradeAccountInput")
+            ?.value
+            ?.trim() || "";
+        const currentSlug = new URLSearchParams(window.location.search).get("slug") || "";
+        const customerEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(accountIdentifier)
+            ? accountIdentifier
+            : "";
         const response = await fetch(
             "/api/orders",
             {
@@ -1049,12 +1056,21 @@
                     "content-type": "application/json"
                 },
                 body: JSON.stringify({
-                    items: getItems().map((item) => ({
-                        productId: item.id,
-                        productSlug: item.slug,
-                        quantity: item.quantity,
-                        options: item.options
-                    })),
+                    items: getItems().map((item) => {
+                        const options = { ...item.options };
+
+                        if (accountIdentifier && item.slug === currentSlug) {
+                            options.accountIdentifier = accountIdentifier;
+                        }
+
+                        return {
+                            productId: item.id,
+                            productSlug: item.slug,
+                            quantity: item.quantity,
+                            options
+                        };
+                    }),
+                    customerEmail,
                     note: "Telegram bot cart checkout"
                 })
             }
@@ -1611,6 +1627,11 @@
                 "Có";
         }
 
+        const accountIdentifier =
+            document.querySelector("#upgradeAccountInput")
+                ?.value
+                ?.trim() || "";
+
         return {
             id:
                 catalogProduct.id ||
@@ -1640,6 +1661,11 @@
                 privateAccount:
                     cleanOptionText(
                         privateAccount
+                    ),
+
+                accountIdentifier:
+                    cleanOptionText(
+                        accountIdentifier
                     )
             }
         };

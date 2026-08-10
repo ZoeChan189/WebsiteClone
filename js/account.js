@@ -1,7 +1,16 @@
 "use strict";
 
-const state = { token: localStorage.getItem("customerSession") || "", user: null, orders: [] };
+const state = { user: null, orders: [] };
 const $ = (selector) => document.querySelector(selector);
+
+function escapeHTML(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
 
 function toast(message) {
     const el = $("#accountToast");
@@ -15,7 +24,6 @@ async function api(path, options = {}) {
         ...options,
         headers: {
             "content-type": "application/json",
-            authorization: state.token ? `Bearer ${state.token}` : "",
             ...(options.headers || {})
         }
     });
@@ -83,16 +91,15 @@ function renderOrders() {
     notice.textContent = `Bạn có ${state.orders.length} đơn hàng.`;
     list.innerHTML = state.orders.map((order) => `
         <article class="order-row">
-            <strong>${order.id}</strong>
+            <strong>${escapeHTML(order.id)}</strong>
             <span>${Number(order.total || 0).toLocaleString("vi-VN")}đ</span>
-            <span>${order.status}</span>
+            <span>${escapeHTML(order.status)}</span>
         </article>
     `).join("");
 }
 
 async function logout() {
     try { await api("/api/auth/logout", { method: "POST" }); } catch {}
-    localStorage.removeItem("customerSession");
     location.href = "index.html";
 }
 
@@ -102,7 +109,7 @@ async function saveProfile(event) {
         toast("Xác nhận mật khẩu chưa khớp.");
         return;
     }
-    state.user = await api("/api/account", {
+    const result = await api("/api/account", {
         method: "PUT",
         body: JSON.stringify({
             firstName: $("#firstName").value,
@@ -113,6 +120,9 @@ async function saveProfile(event) {
             newPassword: $("#newPassword").value
         })
     });
+
+    state.user = result;
+
     $("#currentPassword").value = "";
     $("#newPassword").value = "";
     $("#confirmPassword").value = "";
@@ -121,15 +131,10 @@ async function saveProfile(event) {
 }
 
 async function boot() {
-    if (!state.token) {
-        location.href = "index.html";
-        return;
-    }
     try {
         state.user = await api("/api/account");
         state.orders = await api("/api/account/orders");
     } catch {
-        localStorage.removeItem("customerSession");
         location.href = "index.html";
         return;
     }

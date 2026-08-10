@@ -5,7 +5,8 @@
       "username": "admin",
       "name": "Quản trị viên",
       "role": "admin",
-      "passwordHash": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
+      "sessionVersion": 0,
+      "passwordHash": ""
     }
   ],
   "categories": [
@@ -1321,17 +1322,5 @@
       "description": ""
     }
   ],
-  "orders": [
-    {
-      "id": "ord_demo",
-      "customerName": "Khách demo",
-      "customerPhone": "0924356579",
-      "productId": "prod_chatgpt_plus",
-      "quantity": 1,
-      "total": 147510,
-      "status": "pending",
-      "note": "Đơn mẫu để test admin.",
-      "createdAt": "2026-08-08T13:30:00.000Z"
-    }
-  ]
+  "orders": []
 }

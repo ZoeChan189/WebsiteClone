@@ -12,24 +12,39 @@ const seedDataFile = path.join(rootDir, "data", "db.json");
 const dataFile = process.env.DATA_FILE
     ? path.resolve(process.env.DATA_FILE)
     : seedDataFile;
+const environment = String(process.env.NODE_ENV || "development").toLowerCase();
+const isProduction = environment === "production";
 const port = Number(process.env.PORT || 8010);
+const host = String(process.env.HOST || (isProduction ? "127.0.0.1" : "0.0.0.0")).trim();
 const sessionSecret = process.env.SESSION_SECRET || "storetainguyen-dev-session-secret";
+const dataEncryptionSecret = process.env.DATA_ENCRYPTION_KEY || "";
 const adminPassword = process.env.ADMIN_PASSWORD || "";
 const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH || "";
-const githubToken = process.env.GITHUB_TOKEN || "";
-const syncDbToGithubEnabled = process.env.DB_SYNC_TO_GITHUB === "true";
-const githubRepo = process.env.GITHUB_REPO || "ZoeChan189/WebsiteClone";
-const githubBranch = process.env.GITHUB_BRANCH || "feature/cart";
-const githubDbPath = process.env.GITHUB_DB_PATH || "data/db.json";
 const maxBodyBytes = Number(process.env.MAX_BODY_BYTES || 250000);
 const sessionMaxAgeMs = Number(process.env.SESSION_MAX_AGE_MS || 24 * 60 * 60 * 1000);
+const allowRegistration = process.env.ALLOW_REGISTRATION
+    ? process.env.ALLOW_REGISTRATION === "true"
+    : !isProduction;
 const telegramBotUrl = (process.env.TELEGRAM_BOT_URL || "").replace(/\/+$/, "");
 const botWebhookSecret = process.env.BOT_WEBHOOK_SECRET || "";
+const botWebhookSigningSecret = process.env.BOT_WEBHOOK_SIGNING_SECRET || "";
+const botRequireSignature = process.env.BOT_REQUIRE_SIGNATURE
+    ? process.env.BOT_REQUIRE_SIGNATURE === "true"
+    : isProduction;
+const botRequirePaymentRef = process.env.BOT_REQUIRE_PAYMENT_REF
+    ? process.env.BOT_REQUIRE_PAYMENT_REF === "true"
+    : isProduction;
+const botWebhookMaxSkewMs = Number(process.env.BOT_WEBHOOK_MAX_SKEW_MS || 5 * 60 * 1000);
+const trustProxyHeaders = process.env.TRUST_PROXY_HEADERS === "true";
 const canbosoApiBase = (process.env.CANBOSO_API_BASE || "https://canboso.com").replace(/\/+$/, "");
 const canbosoApiKey = process.env.CANBOSO_API_KEY || "";
 const canbosoMarkupVnd = Number(process.env.CANBOSO_MARKUP_VND || 10000);
-const sessions = new Map();
+const sessionCookieName = isProduction ? "__Host-stn_session" : "stn_session";
 const loginAttempts = new Map();
+const registerAttempts = new Map();
+const orderAttempts = new Map();
+const botAttempts = new Map();
+let mutationQueue = Promise.resolve();
 
 const mimeTypes = {
     ".html": "text/html; charset=utf-8",
@@ -44,11 +59,12 @@ const mimeTypes = {
     ".ico": "image/x-icon"
 };
 
-function sendJson(res, status, payload) {
+function sendJson(res, status, payload, extraHeaders = {}) {
     res.writeHead(status, {
         "content-type": "application/json; charset=utf-8",
         "cache-control": "no-store",
-        ...securityHeaders()
+        ...securityHeaders(),
+        ...extraHeaders
     });
     res.end(JSON.stringify(payload));
 }
@@ -66,64 +82,119 @@ function sendError(res, status, message) {
     sendJson(res, status, { error: message });
 }
 
-function securityHeaders() {
-    return {
-        "x-content-type-options": "nosniff",
-        "x-frame-options": "SAMEORIGIN",
-        "referrer-policy": "strict-origin-when-cross-origin",
-        "permissions-policy": "camera=(), microphone=(), geolocation=()"
-    };
+function httpError(statusCode, message) {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    error.expose = statusCode >= 400 && statusCode < 500;
+    return error;
 }
 
-function githubRequest(method, apiPath, body = null) {
-    return new Promise((resolve, reject) => {
-        const payload = body ? JSON.stringify(body) : "";
-        const request = https.request(
-            {
-                hostname: "api.github.com",
-                path: apiPath,
-                method,
-                headers: {
-                    "accept": "application/vnd.github+json",
-                    "authorization": `Bearer ${githubToken}`,
-                    "content-type": "application/json",
-                    "content-length": Buffer.byteLength(payload),
-                    "user-agent": "storetainguyen-admin-sync",
-                    "x-github-api-version": "2022-11-28"
-                }
-            },
-            (response) => {
-                const chunks = [];
+function redactSensitive(value) {
+    let output = String(value ?? "");
 
-                response.on("data", (chunk) => chunks.push(chunk));
-                response.on("end", () => {
-                    const raw = Buffer.concat(chunks).toString("utf8");
-                    let data = {};
+    for (const secret of [
+        sessionSecret,
+        dataEncryptionSecret,
+        adminPassword,
+        botWebhookSecret,
+        botWebhookSigningSecret,
+        canbosoApiKey
+    ]) {
+        if (secret && secret.length >= 8) {
+            output = output.split(secret).join("[REDACTED]");
+        }
+    }
 
-                    try {
-                        data = raw ? JSON.parse(raw) : {};
-                    } catch {
-                        data = { message: raw };
-                    }
+    return output;
+}
 
-                    if (response.statusCode >= 200 && response.statusCode < 300) {
-                        resolve(data);
-                        return;
-                    }
+function dataEncryptionKey() {
+    return dataEncryptionSecret
+        ? crypto.createHash("sha256").update(dataEncryptionSecret).digest()
+        : null;
+}
 
-                    reject(new Error(data.message || `GitHub API error ${response.statusCode}`));
-                });
-            }
-        );
+function encryptSensitiveJson(value) {
+    const key = dataEncryptionKey();
 
-        request.on("error", reject);
-        request.end(payload);
-    });
+    if (!key) {
+        return "";
+    }
+
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+    const ciphertext = Buffer.concat([
+        cipher.update(JSON.stringify(value), "utf8"),
+        cipher.final()
+    ]);
+    const tag = cipher.getAuthTag();
+
+    return ["enc", "v1", iv.toString("base64url"), tag.toString("base64url"), ciphertext.toString("base64url")].join(":");
+}
+
+function decryptSensitiveJson(value) {
+    const key = dataEncryptionKey();
+    const parts = String(value || "").split(":");
+
+    if (!key) {
+        throw new Error("DATA_ENCRYPTION_KEY is required to decrypt order data.");
+    }
+
+    if (parts.length !== 5 || parts[0] !== "enc" || parts[1] !== "v1") {
+        throw new Error("Unsupported encrypted order data format.");
+    }
+
+    try {
+        const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(parts[2], "base64url"));
+        decipher.setAuthTag(Buffer.from(parts[3], "base64url"));
+        const plaintext = Buffer.concat([
+            decipher.update(Buffer.from(parts[4], "base64url")),
+            decipher.final()
+        ]).toString("utf8");
+        return JSON.parse(plaintext);
+    } catch {
+        throw new Error("Cannot decrypt order data. Check DATA_ENCRYPTION_KEY.");
+    }
+}
+
+function securityHeaders() {
+    const headers = {
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "referrer-policy": "no-referrer",
+        "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+        "cross-origin-opener-policy": "same-origin",
+        "content-security-policy": [
+            "default-src 'self'",
+            "base-uri 'self'",
+            "object-src 'none'",
+            "frame-ancestors 'none'",
+            "form-action 'self'",
+            "script-src 'self'",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+            "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net",
+            "img-src 'self' data: https:",
+            "connect-src 'self'"
+        ].join("; ")
+    };
+
+    if (isProduction) {
+        headers["strict-transport-security"] = "max-age=31536000; includeSubDomains";
+        headers["content-security-policy"] += "; upgrade-insecure-requests";
+    }
+
+    return headers;
 }
 
 function httpsJsonRequest(method, targetUrl, body = null, headers = {}) {
     return new Promise((resolve, reject) => {
         const url = new URL(targetUrl);
+
+        if (url.protocol !== "https:") {
+            reject(new Error("Upstream API must use HTTPS."));
+            return;
+        }
+
         const payload = body ? JSON.stringify(body) : "";
         const request = https.request(
             {
@@ -141,8 +212,18 @@ function httpsJsonRequest(method, targetUrl, body = null, headers = {}) {
             },
             (response) => {
                 const chunks = [];
+                let responseBytes = 0;
 
-                response.on("data", (chunk) => chunks.push(chunk));
+                response.on("data", (chunk) => {
+                    responseBytes += chunk.length;
+
+                    if (responseBytes > 1024 * 1024) {
+                        request.destroy(new Error("Upstream API response is too large."));
+                        return;
+                    }
+
+                    chunks.push(chunk);
+                });
                 response.on("end", () => {
                     const raw = Buffer.concat(chunks).toString("utf8");
                     let data = {};
@@ -178,13 +259,20 @@ function hashPassword(password) {
 
 function createPasswordHash(password) {
     const salt = crypto.randomBytes(16).toString("hex");
-    const hash = crypto.pbkdf2Sync(String(password), salt, 120000, 32, "sha256").toString("hex");
-    return `pbkdf2$${salt}$${hash}`;
+    const hash = crypto.scryptSync(String(password), salt, 32).toString("hex");
+    return `scrypt$${salt}$${hash}`;
 }
 
 function timingSafeEqualHex(left, right) {
-    const leftBuffer = Buffer.from(String(left || ""), "hex");
-    const rightBuffer = Buffer.from(String(right || ""), "hex");
+    const leftHex = String(left || "");
+    const rightHex = String(right || "");
+
+    if (!/^[a-f0-9]+$/i.test(leftHex) || !/^[a-f0-9]+$/i.test(rightHex)) {
+        return false;
+    }
+
+    const leftBuffer = Buffer.from(leftHex, "hex");
+    const rightBuffer = Buffer.from(rightHex, "hex");
 
     if (leftBuffer.length !== rightBuffer.length) {
         return false;
@@ -196,8 +284,25 @@ function timingSafeEqualHex(left, right) {
 function verifyPassword(password, storedHash) {
     const hash = String(storedHash || "");
 
+    if (hash.startsWith("scrypt$")) {
+        const parts = hash.split("$");
+
+        if (parts.length !== 3 || !parts[1] || !parts[2]) {
+            return false;
+        }
+
+        const actual = crypto.scryptSync(String(password), parts[1], 32).toString("hex");
+        return timingSafeEqualHex(actual, parts[2]);
+    }
+
     if (hash.startsWith("pbkdf2$")) {
-        const [, salt, expected] = hash.split("$");
+        const parts = hash.split("$");
+
+        if (parts.length !== 3 || !parts[1] || !parts[2]) {
+            return false;
+        }
+
+        const [, salt, expected] = parts;
         const actual = crypto.pbkdf2Sync(String(password), salt, 120000, 32, "sha256").toString("hex");
         return timingSafeEqualHex(actual, expected);
     }
@@ -211,7 +316,7 @@ function verifyAdminPassword(password, user) {
     }
 
     if (adminPassword) {
-        return String(password) === adminPassword;
+        return timingSafeEqualString(password, adminPassword);
     }
 
     return verifyPassword(password, user?.passwordHash);
@@ -243,53 +348,96 @@ function timingSafeEqualString(left, right) {
     return crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-function createSessionToken(userId) {
+function createSessionToken(user) {
     const payload = base64UrlEncode(JSON.stringify({
-        userId,
-        createdAt: Date.now()
+        userId: user.id,
+        createdAt: Date.now(),
+        sessionVersion: Number(user.sessionVersion || 0)
     }));
 
     return `${payload}.${signPayload(payload)}`;
 }
 
-function userIdFromToken(token) {
-    if (!token) {
-        return "";
+function sessionCookie(token) {
+    const maxAge = Math.max(1, Math.floor(sessionMaxAgeMs / 1000));
+    const secure = isProduction ? "; Secure" : "";
+    return `${sessionCookieName}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure}`;
+}
+
+function clearSessionCookie() {
+    const secure = isProduction ? "; Secure" : "";
+    return `${sessionCookieName}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`;
+}
+
+function cookieValue(req, name) {
+    const cookieHeader = String(req.headers.cookie || "");
+
+    for (const part of cookieHeader.split(";")) {
+        const separator = part.indexOf("=");
+
+        if (separator < 0 || part.slice(0, separator).trim() !== name) {
+            continue;
+        }
+
+        try {
+            return decodeURIComponent(part.slice(separator + 1).trim());
+        } catch {
+            return "";
+        }
     }
 
-    if (sessions.has(token)) {
-        return sessions.get(token).userId;
+    return "";
+}
+
+function sessionFromToken(token) {
+    if (!token) {
+        return null;
     }
 
     const [payload, signature] = token.split(".");
 
     if (!payload || !signature || !timingSafeEqualString(signPayload(payload), signature)) {
-        return "";
+        return null;
     }
 
     try {
         const session = JSON.parse(base64UrlDecode(payload));
 
         if (!session.createdAt || Date.now() - Number(session.createdAt) > sessionMaxAgeMs) {
-            return "";
+            return null;
         }
 
-        return session.userId || "";
+        if (!session.userId || !Number.isInteger(Number(session.sessionVersion || 0))) {
+            return null;
+        }
+
+        return session;
     } catch {
-        return "";
+        return null;
     }
 }
 
-function authUser(req, db) {
+function authContext(req, db) {
     const header = req.headers.authorization || "";
-    const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-    const userId = userIdFromToken(token);
+    const bearerToken = header.startsWith("Bearer ") ? header.slice(7) : "";
+    const token = bearerToken || cookieValue(req, sessionCookieName);
+    const session = sessionFromToken(token);
 
-    if (!userId) {
+    if (!session) {
         return null;
     }
 
-    return db.users?.find((user) => user.id === userId) || null;
+    const user = db.users?.find((item) => item.id === session.userId) || null;
+
+    if (!user || Number(user.sessionVersion || 0) !== Number(session.sessionVersion || 0)) {
+        return null;
+    }
+
+    return { user, token, session };
+}
+
+function authUser(req, db) {
+    return authContext(req, db)?.user || null;
 }
 
 function isAdmin(req, db) {
@@ -305,7 +453,17 @@ function requireAdmin(req, res, db) {
     return false;
 }
 
-async function readBody(req) {
+async function readRawBody(req) {
+    if (typeof req.rawBody === "string") {
+        return req.rawBody;
+    }
+
+    const contentType = String(req.headers["content-type"] || "").toLowerCase();
+
+    if (!contentType.startsWith("application/json")) {
+        throw httpError(415, "Content-Type phải là application/json.");
+    }
+
     const chunks = [];
     let total = 0;
 
@@ -313,28 +471,50 @@ async function readBody(req) {
         total += chunk.length;
 
         if (total > maxBodyBytes) {
-            throw new Error("Payload quá lớn.");
+            throw httpError(413, "Payload quá lớn.");
         }
 
         chunks.push(chunk);
     }
 
-    const raw = Buffer.concat(chunks).toString("utf8").trim();
-    return raw ? JSON.parse(raw) : {};
+    req.rawBody = Buffer.concat(chunks).toString("utf8");
+    return req.rawBody;
+}
+
+async function readBody(req) {
+    const raw = (await readRawBody(req)).trim();
+
+    if (!raw) {
+        return {};
+    }
+
+    try {
+        return JSON.parse(raw);
+    } catch {
+        throw httpError(400, "JSON không hợp lệ.");
+    }
 }
 
 function clientIp(req) {
-    return String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "")
-        .split(",")[0]
-        .trim();
+    if (trustProxyHeaders && req.headers["x-real-ip"]) {
+        return String(req.headers["x-real-ip"]).trim();
+    }
+
+    return String(req.socket.remoteAddress || "").trim();
 }
 
-function checkLoginRateLimit(req) {
-    const key = clientIp(req) || "unknown";
+function consumeRateLimit(store, key, maxAttempts, windowMs) {
     const now = Date.now();
-    const windowMs = 15 * 60 * 1000;
-    const maxAttempts = 12;
-    const bucket = loginAttempts.get(key) || { count: 0, resetAt: now + windowMs };
+
+    if (store.size > 10000) {
+        for (const [storedKey, storedBucket] of store) {
+            if (storedBucket.resetAt <= now) {
+                store.delete(storedKey);
+            }
+        }
+    }
+
+    const bucket = store.get(key) || { count: 0, resetAt: now + windowMs };
 
     if (bucket.resetAt <= now) {
         bucket.count = 0;
@@ -342,13 +522,69 @@ function checkLoginRateLimit(req) {
     }
 
     bucket.count += 1;
-    loginAttempts.set(key, bucket);
+    store.set(key, bucket);
 
     return bucket.count <= maxAttempts;
 }
 
+function checkLoginRateLimit(req) {
+    return consumeRateLimit(loginAttempts, clientIp(req) || "unknown", 12, 15 * 60 * 1000);
+}
+
 function clearLoginRateLimit(req) {
     loginAttempts.delete(clientIp(req) || "unknown");
+}
+
+const sensitiveOrderFields = [
+    "customerName",
+    "customerPhone",
+    "customerEmail",
+    "telegramUserId",
+    "telegramUsername",
+    "botPaymentRef",
+    "deliveredAccounts",
+    "note"
+];
+
+function hydrateSensitiveOrders(db) {
+    for (const order of db.orders || []) {
+        if (!order.sensitiveEncrypted) {
+            continue;
+        }
+
+        const sensitive = decryptSensitiveJson(order.sensitiveEncrypted);
+
+        for (const field of sensitiveOrderFields) {
+            if (hasOwn(sensitive, field)) {
+                order[field] = sensitive[field];
+            }
+        }
+
+        delete order.sensitiveEncrypted;
+    }
+
+    return db;
+}
+
+function databaseForPersistence(db) {
+    const persisted = JSON.parse(JSON.stringify(db));
+
+    if (!dataEncryptionSecret) {
+        return persisted;
+    }
+
+    for (const order of persisted.orders || []) {
+        const sensitive = {};
+
+        for (const field of sensitiveOrderFields) {
+            sensitive[field] = order[field] ?? (field === "deliveredAccounts" ? [] : "");
+            delete order[field];
+        }
+
+        order.sensitiveEncrypted = encryptSensitiveJson(sensitive);
+    }
+
+    return persisted;
 }
 
 async function readDb() {
@@ -360,61 +596,31 @@ async function readDb() {
     }
 
     const raw = await fs.readFile(dataFile, "utf8");
-    return JSON.parse(raw);
-}
-
-let githubSyncQueue = Promise.resolve();
-
-async function syncDbToGithub(raw) {
-    if (!githubToken || !syncDbToGithubEnabled) {
-        return;
-    }
-
-    githubSyncQueue = githubSyncQueue.then(async () => {
-        const encodedPath = githubDbPath
-            .split("/")
-            .map(encodeURIComponent)
-            .join("/");
-
-        const current = await githubRequest(
-            "GET",
-            `/repos/${githubRepo}/contents/${encodedPath}?ref=${encodeURIComponent(githubBranch)}`
-        );
-
-        await githubRequest(
-            "PUT",
-            `/repos/${githubRepo}/contents/${encodedPath}`,
-            {
-                message: `Update ${githubDbPath} from admin panel`,
-                content: Buffer.from(raw, "utf8").toString("base64"),
-                sha: current.sha,
-                branch: githubBranch
-            }
-        );
-    });
-
-    return githubSyncQueue;
+    return hydrateSensitiveOrders(JSON.parse(raw));
 }
 
 async function writeDb(db) {
-    const raw = JSON.stringify(db, null, 2) + "\n";
+    const raw = JSON.stringify(databaseForPersistence(db), null, 2) + "\n";
+    const directory = path.dirname(dataFile);
+    const tempFile = path.join(directory, `.${path.basename(dataFile)}.${process.pid}.tmp`);
 
-    await fs.mkdir(path.dirname(dataFile), { recursive: true });
-    await fs.writeFile(dataFile, raw, "utf8");
+    await fs.mkdir(directory, { recursive: true, mode: 0o700 });
+    await fs.writeFile(tempFile, raw, { encoding: "utf8", mode: 0o600 });
+    await fs.rename(tempFile, dataFile);
 
-    try {
-        await syncDbToGithub(raw);
-    } catch (error) {
-        console.error("GitHub db sync failed:", error.message);
-
-        if (githubToken) {
-            throw new Error("Đã lưu tạm trên server nhưng chưa đồng bộ được data/db.json lên GitHub: " + error.message);
-        }
+    if (process.platform !== "win32") {
+        await fs.chmod(dataFile, 0o600);
     }
 }
 
+function withMutationLock(task) {
+    const run = mutationQueue.then(task, task);
+    mutationQueue = run.catch(() => {});
+    return run;
+}
+
 function createId(prefix) {
-    return `${prefix}_${crypto.randomBytes(5).toString("hex")}`;
+    return `${prefix}_${crypto.randomBytes(12).toString("hex")}`;
 }
 
 function slugify(value) {
@@ -428,42 +634,166 @@ function slugify(value) {
         .slice(0, 80);
 }
 
+function hasOwn(object, key) {
+    return Object.prototype.hasOwnProperty.call(object || {}, key);
+}
+
+function inputValue(input, existing, key, fallback = "") {
+    if (hasOwn(input, key)) {
+        return input[key];
+    }
+
+    if (hasOwn(existing, key)) {
+        return existing[key];
+    }
+
+    return fallback;
+}
+
+function boundedString(value, maxLength, fieldName) {
+    const output = String(value ?? "").trim();
+
+    if (output.length > maxLength) {
+        throw httpError(400, `${fieldName} vượt quá ${maxLength} ký tự.`);
+    }
+
+    return output;
+}
+
+function finiteNumber(value, fieldName, { min = 0, max = Number.MAX_SAFE_INTEGER, integer = false } = {}) {
+    const output = Number(value);
+
+    if (!Number.isFinite(output) || output < min || output > max || (integer && !Number.isInteger(output))) {
+        throw httpError(400, `${fieldName} không hợp lệ.`);
+    }
+
+    return output;
+}
+
+function sanitizeAssetUrl(value, fieldName) {
+    const output = boundedString(value, 1000, fieldName);
+
+    if (!output) {
+        return "";
+    }
+
+    if (/^(?:assets|images)\/[a-z0-9_./-]+$/i.test(output) && !output.includes("..")) {
+        return output;
+    }
+
+    let url;
+
+    try {
+        url = new URL(output);
+    } catch {
+        throw httpError(400, `${fieldName} phải là URL HTTPS hoặc đường dẫn asset hợp lệ.`);
+    }
+
+    if (url.protocol !== "https:" && !(environment === "development" && url.protocol === "http:")) {
+        throw httpError(400, `${fieldName} phải dùng HTTPS.`);
+    }
+
+    if (url.username || url.password) {
+        throw httpError(400, `${fieldName} không được chứa thông tin đăng nhập.`);
+    }
+
+    return url.toString();
+}
+
+function publicAssetUrl(value) {
+    try {
+        return sanitizeAssetUrl(value, "Asset");
+    } catch {
+        return "";
+    }
+}
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function sanitizeOrderOptions(value) {
+    const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    const output = {};
+
+    for (const key of ["package", "variant", "duration", "privateAccount", "accountIdentifier", "customerEmail", "email"]) {
+        if (hasOwn(input, key)) {
+            output[key] = boundedString(input[key], 200, `options.${key}`);
+        }
+    }
+
+    return output;
+}
+
+function isValidEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "")) && String(value).length <= 254;
+}
+
+function normalizeSlotMonths(value) {
+    if (value === "" || value == null) {
+        return null;
+    }
+
+    const months = finiteNumber(value, "Slot months", { integer: true, max: 12 });
+
+    if (![1, 3, 6, 12].includes(months)) {
+        throw httpError(400, "Slot months chỉ nhận 1, 3, 6 hoặc 12.");
+    }
+
+    return months;
+}
+
 function normalizeProduct(input, existing = {}) {
-    const name = String(input.name || existing.name || "").trim();
+    const name = boundedString(inputValue(input, existing, "name"), 160, "Tên sản phẩm");
+    const slug = slugify(inputValue(input, existing, "slug", name) || name);
+    const status = String(inputValue(input, existing, "status", "active"));
+
+    if (!name || !slug) {
+        throw httpError(400, "Tên và slug sản phẩm là bắt buộc.");
+    }
+
+    if (!["active", "draft"].includes(status)) {
+        throw httpError(400, "Trạng thái sản phẩm không hợp lệ.");
+    }
 
     return {
         ...existing,
-        id: existing.id || input.id || createId("prod"),
-        slug: slugify(input.slug || existing.slug || name),
+        id: existing.id || createId("prod"),
+        slug,
         name,
-        categorySlug: String(input.categorySlug || existing.categorySlug || "cong-cu-ai").trim(),
-        image: String(input.image || existing.image || "").trim(),
-        icon: String(input.icon || existing.icon || "").trim(),
-        discount: String(input.discount || existing.discount || "").trim(),
-        price: Number(input.price ?? existing.price ?? 0),
-        oldPrice: input.oldPrice === "" ? null : Number(input.oldPrice ?? existing.oldPrice ?? 0),
-        stock: Number(input.stock ?? existing.stock ?? 0),
-        rating: Number(input.rating ?? existing.rating ?? 4.6),
-        sold: Number(input.sold ?? existing.sold ?? 0),
-        status: input.status || existing.status || "active",
-        description: String(input.description || existing.description || "").trim(),
-        canbosoProductId: String(input.canbosoProductId || existing.canbosoProductId || "").trim(),
-        canbosoCostPrice: input.canbosoCostPrice === "" ? null : Number(input.canbosoCostPrice ?? existing.canbosoCostPrice ?? 0),
-        canbosoMarkup: input.canbosoMarkup === "" ? null : Number(input.canbosoMarkup ?? existing.canbosoMarkup ?? canbosoMarkupVnd),
-        requiresCustomerEmail: Boolean(input.requiresCustomerEmail ?? existing.requiresCustomerEmail ?? false),
-        canbosoSlotMonths: input.canbosoSlotMonths === "" ? null : Number(input.canbosoSlotMonths ?? existing.canbosoSlotMonths ?? 0)
+        categorySlug: boundedString(inputValue(input, existing, "categorySlug", "cong-cu-ai"), 80, "Danh mục"),
+        image: sanitizeAssetUrl(inputValue(input, existing, "image"), "Ảnh sản phẩm"),
+        icon: sanitizeAssetUrl(inputValue(input, existing, "icon"), "Icon sản phẩm"),
+        discount: boundedString(inputValue(input, existing, "discount"), 30, "Giảm giá"),
+        price: finiteNumber(inputValue(input, existing, "price", 0), "Giá", { integer: true }),
+        oldPrice: inputValue(input, existing, "oldPrice", "") === ""
+            ? null
+            : finiteNumber(inputValue(input, existing, "oldPrice", 0), "Giá cũ", { integer: true }),
+        stock: finiteNumber(inputValue(input, existing, "stock", 0), "Tồn kho", { integer: true }),
+        rating: finiteNumber(inputValue(input, existing, "rating", 4.6), "Đánh giá", { min: 0, max: 5 }),
+        sold: finiteNumber(inputValue(input, existing, "sold", 0), "Đã bán", { integer: true }),
+        status,
+        description: boundedString(inputValue(input, existing, "description"), 5000, "Mô tả"),
+        canbosoProductId: boundedString(inputValue(input, existing, "canbosoProductId"), 160, "Canboso product_id"),
+        canbosoCostPrice: inputValue(input, existing, "canbosoCostPrice", "") === ""
+            ? null
+            : finiteNumber(inputValue(input, existing, "canbosoCostPrice", 0), "Giá gốc Canboso", { integer: true }),
+        canbosoMarkup: inputValue(input, existing, "canbosoMarkup", "") === ""
+            ? null
+            : finiteNumber(inputValue(input, existing, "canbosoMarkup", canbosoMarkupVnd), "Markup", { integer: true }),
+        requiresCustomerEmail: Boolean(inputValue(input, existing, "requiresCustomerEmail", false)),
+        canbosoSlotMonths: normalizeSlotMonths(inputValue(input, existing, "canbosoSlotMonths", ""))
     };
 }
 
 function priceToVnd(value) {
     const number = Number(value || 0);
     return number > 0 && number < 10000 ? number * 1000 : number;
-}
-
-function publicOrigin(req) {
-    const proto = req.headers["x-forwarded-proto"] || "http";
-    const host = req.headers["x-forwarded-host"] || req.headers.host || "";
-    return `${proto}://${host}`;
 }
 
 function buildTelegramStartUrl(orderId) {
@@ -475,7 +805,7 @@ function buildTelegramStartUrl(orderId) {
     return `${telegramBotUrl}${separator}start=${encodeURIComponent(orderId)}`;
 }
 
-function requireBot(req, res) {
+function requireBot(req, res, signaturePayload = null) {
     if (!botWebhookSecret) {
         sendError(res, 503, "BOT_WEBHOOK_SECRET chưa được cấu hình.");
         return false;
@@ -491,54 +821,98 @@ function requireBot(req, res) {
         return false;
     }
 
+    if (botRequireSignature) {
+        if (signaturePayload === null) {
+            sendError(res, 401, "Request bot thiếu payload chữ ký.");
+            return false;
+        }
+
+        const timestampHeader = String(req.headers["x-bot-timestamp"] || "").trim();
+        const providedSignature = String(req.headers["x-bot-signature"] || "")
+            .trim()
+            .replace(/^sha256=/i, "");
+        const timestamp = Number(timestampHeader);
+        const timestampMs = timestamp > 1e12 ? timestamp : timestamp * 1000;
+
+        if (!botWebhookSigningSecret) {
+            sendError(res, 503, "BOT_WEBHOOK_SIGNING_SECRET chưa được cấu hình.");
+            return false;
+        }
+
+        if (!Number.isFinite(timestampMs) || Math.abs(Date.now() - timestampMs) > botWebhookMaxSkewMs) {
+            sendError(res, 401, "Webhook đã hết hạn hoặc timestamp không hợp lệ.");
+            return false;
+        }
+
+        const expectedSignature = crypto
+            .createHmac("sha256", botWebhookSigningSecret)
+            .update(`${timestampHeader}.${signaturePayload}`)
+            .digest("hex");
+
+        if (!timingSafeEqualHex(providedSignature, expectedSignature)) {
+            sendError(res, 401, "Chữ ký webhook không hợp lệ.");
+            return false;
+        }
+    }
+
     return true;
 }
 
-function orderProductSnapshot(product) {
-    if (!product) {
-        return null;
-    }
-
+function publicOrderItem(item) {
     return {
-        id: product.id,
-        slug: product.slug,
-        name: product.name,
-        image: product.image || product.icon || "",
-        price: priceToVnd(product.price)
+        productId: item.productId || "",
+        productSlug: item.productSlug || "",
+        productName: item.productName || "",
+        image: publicAssetUrl(item.image),
+        quantity: Number(item.quantity || 1),
+        unitPrice: Number(item.unitPrice || 0),
+        total: Number(item.total || 0),
+        options: sanitizeOrderOptions(item.options)
     };
 }
 
-function publicOrder(order, req = null) {
-    return {
+function publicOrder(order, options = {}) {
+    const payload = {
         id: order.id,
         orderId: order.id,
-        userId: order.userId || null,
         productId: order.productId || "",
         productSlug: order.productSlug || "",
         productName: order.productName || "",
-        items: order.items || [],
+        items: (order.items || []).map(publicOrderItem),
         quantity: Number(order.quantity || 1),
         total: Number(order.total || 0),
-        costTotal: Number(order.costTotal || 0),
-        profitTotal: Number(order.profitTotal || 0),
         amount: Number(order.total || order.amount || 0),
+        paidAmount: order.paidAmount == null ? null : Number(order.paidAmount),
         status: order.status || "created",
         source: order.source || "website",
-        telegramUserId: order.telegramUserId || "",
-        telegramUsername: order.telegramUsername || "",
         paidAt: order.paidAt || "",
         deliveredAt: order.deliveredAt || "",
-        botPaymentRef: order.botPaymentRef || "",
-        canbosoFulfillmentStatus: order.canbosoFulfillmentStatus || "",
-        canbosoFulfillmentMessage: order.canbosoFulfillmentMessage || "",
-        canbosoResults: order.canbosoResults || [],
-        deliveredAccounts: order.deliveredAccounts || [],
         note: order.note || "",
         createdAt: order.createdAt || "",
         updatedAt: order.updatedAt || "",
-        telegramUrl: buildTelegramStartUrl(order.id),
-        botOrderApi: req ? `${publicOrigin(req)}/api/bot/orders/${encodeURIComponent(order.id)}` : ""
+        telegramUrl: buildTelegramStartUrl(order.id)
     };
+
+    if (options.includeCustomer) {
+        payload.userId = order.userId || null;
+        payload.customerName = order.customerName || "";
+        payload.customerPhone = order.customerPhone || "";
+        payload.customerEmail = order.customerEmail || "";
+        payload.telegramUserId = order.telegramUserId || "";
+        payload.telegramUsername = order.telegramUsername || "";
+        payload.botPaymentRef = order.botPaymentRef || "";
+    }
+
+    if (options.includeIntegration) {
+        payload.canbosoFulfillmentStatus = order.canbosoFulfillmentStatus || "";
+        payload.canbosoFulfillmentMessage = order.canbosoFulfillmentMessage || "";
+    }
+
+    if (options.includeDelivery) {
+        payload.deliveredAccounts = order.deliveredAccounts || [];
+    }
+
+    return payload;
 }
 
 function requireCanbosoConfig(res) {
@@ -556,7 +930,84 @@ async function canbosoGet(pathname) {
     return httpsJsonRequest("GET", url.toString());
 }
 
-async function canbosoPurchaseItem(order, item, paymentInput = {}) {
+function extractDeliveredAccounts(result) {
+    const candidates = [
+        result?.deliveredAccounts,
+        result?.delivered_accounts,
+        result?.accounts,
+        result?.account,
+        result?.data?.deliveredAccounts,
+        result?.data?.delivered_accounts,
+        result?.data?.accounts,
+        result?.data?.account,
+        result?.data?.items
+    ];
+    const accounts = candidates.find((value) => Array.isArray(value) || (value && typeof value === "object") || typeof value === "string");
+
+    if (accounts == null) {
+        return [];
+    }
+
+    const list = Array.isArray(accounts) ? accounts : [accounts];
+    const serialized = JSON.stringify(list);
+
+    if (Buffer.byteLength(serialized, "utf8") > 200000) {
+        throw new Error("Canboso delivery payload is too large.");
+    }
+
+    return list.map((account) => {
+        if (typeof account === "string") {
+            return account.slice(0, 10000);
+        }
+
+        if (!account || typeof account !== "object" || Array.isArray(account)) {
+            return String(account ?? "").slice(0, 10000);
+        }
+
+        const sanitized = {};
+
+        for (const [key, value] of Object.entries(account)) {
+            if (/^(?:api[_-]?key|buyer[_-]?key|request[_-]?key)$/i.test(key)) {
+                continue;
+            }
+
+            sanitized[key] = typeof value === "string" && value === canbosoApiKey
+                ? "[REDACTED]"
+                : value;
+        }
+
+        return sanitized;
+    });
+}
+
+function summarizeCanbosoResponse(result, deliveredCount) {
+    const orderType = boundedString(redactSensitive(result?.orderType || result?.data?.orderType || ""), 80, "Canboso order type");
+    const manualSlotStatus = boundedString(redactSensitive(result?.manualSlotStatus || result?.data?.manualSlotStatus || ""), 80, "Canboso manual slot status");
+    const workspaceInviteStatus = boundedString(redactSensitive(result?.workspaceInviteStatus || result?.data?.workspaceInviteStatus || ""), 80, "Canboso invite status");
+    const autoCompleted = result?.autoCompleted ?? result?.data?.autoCompleted ?? null;
+    const completed = deliveredCount > 0
+        || workspaceInviteStatus === "invited"
+        || autoCompleted === true
+        || ["completed", "delivered"].includes(manualSlotStatus);
+
+    return {
+        status: boundedString(redactSensitive(result?.status || result?.data?.status || "completed"), 80, "Canboso status"),
+        message: boundedString(redactSensitive(result?.message || result?.data?.message || ""), 500, "Canboso message"),
+        upstreamPurchaseId: boundedString(
+            redactSensitive(result?.orderCode || result?.data?.orderCode || result?.purchase_id || result?.order_id || result?.id || result?.data?.purchase_id || result?.data?.order_id || result?.data?.id || ""),
+            200,
+            "Canboso purchase id"
+        ),
+        orderType,
+        manualSlotStatus,
+        workspaceInviteStatus,
+        autoCompleted,
+        deliveredCount,
+        completed
+    };
+}
+
+async function canbosoPurchaseItem(order, item, itemIndex = 0) {
     if (!item.canbosoProductId) {
         throw new Error(`Sản phẩm ${item.productName || item.productSlug} chưa mapping canbosoProductId.`);
     }
@@ -568,11 +1019,10 @@ async function canbosoPurchaseItem(order, item, paymentInput = {}) {
     };
 
     const customerEmail =
-        paymentInput.customerEmail
-        || paymentInput.customer_email
-        || order.customerEmail
+        order.customerEmail
         || item.options?.customerEmail
         || item.options?.email
+        || item.options?.accountIdentifier
         || "";
 
     if (customerEmail) {
@@ -588,12 +1038,12 @@ async function canbosoPurchaseItem(order, item, paymentInput = {}) {
         `${canbosoApiBase}/api/v2/telegram-buyer/purchase`,
         body,
         {
-            "Idempotency-Key": `${order.id}-${item.productId || item.productSlug}`.slice(0, 128)
+            "Idempotency-Key": `${order.id}-${itemIndex}-${item.productId || item.productSlug}`.slice(0, 128)
         }
     );
 }
 
-async function fulfillOrderWithCanboso(order, paymentInput = {}) {
+async function fulfillOrderWithCanboso(order) {
     if (!canbosoApiKey) {
         return {
             skipped: true,
@@ -610,20 +1060,26 @@ async function fulfillOrderWithCanboso(order, paymentInput = {}) {
     }
 
     const results = [];
+    const deliveredAccounts = [];
 
-    for (const item of order.items || []) {
-        const result = await canbosoPurchaseItem(order, item, paymentInput);
+    for (const [itemIndex, item] of (order.items || []).entries()) {
+        const result = await canbosoPurchaseItem(order, item, itemIndex);
+        const itemAccounts = extractDeliveredAccounts(result);
+
+        deliveredAccounts.push(...itemAccounts);
         results.push({
             productId: item.productId,
             productSlug: item.productSlug,
             canbosoProductId: item.canbosoProductId,
-            response: result
+            ...summarizeCanbosoResponse(result, itemAccounts.length)
         });
     }
 
     return {
         skipped: false,
-        results
+        results,
+        deliveredAccounts,
+        completed: results.length > 0 && results.every((item) => item.completed)
     };
 }
 
@@ -643,7 +1099,7 @@ function formatSold(value) {
 
 function productCatalogItem(product, categories) {
     const category = categories.find((item) => item.slug === product.categorySlug);
-    const image = product.image || product.icon || "";
+    const image = publicAssetUrl(product.image || product.icon || "");
     const price = priceToVnd(product.price);
     const oldPrice = priceToVnd(product.oldPrice);
 
@@ -669,7 +1125,7 @@ function productCatalogItem(product, categories) {
         sold: Number(product.sold || 0),
         highRated: true,
         recentSale: { name: "Khách hàng", time: "vừa xong" },
-        deal: { enabled: !!product.discount },
+        deal: { enabled: false },
         variantTitle: "Loại gói:",
         variants: [
             {
@@ -693,13 +1149,13 @@ function productCatalogItem(product, categories) {
         ],
         notice: [
             {
-                html: `<strong>Lưu ý:</strong> ${product.description || "Chọn đúng gói và thời hạn trước khi thêm vào giỏ."}`
+                html: `<strong>Lưu ý:</strong> ${escapeHtml(product.description || "Chọn đúng gói và thời hạn trước khi thêm vào giỏ.")}`
             }
         ],
         intro: [
             {
                 type: "html",
-                html: `<p>${product.description || `${product.name} đang được bán tại storetainguyen.`}</p>`
+                html: `<p>${escapeHtml(product.description || `${product.name} đang được bán tại storetainguyen.`)}</p>`
             }
         ],
         content: [
@@ -794,15 +1250,25 @@ async function serveLiveCatalog(res, type) {
 }
 
 function normalizeCategory(input, existing = {}) {
-    const name = String(input.name || existing.name || "").trim();
+    const name = boundedString(inputValue(input, existing, "name"), 120, "Tên danh mục");
+    const slug = slugify(inputValue(input, existing, "slug", name) || name);
+    const status = String(inputValue(input, existing, "status", "active"));
+
+    if (!name || !slug) {
+        throw httpError(400, "Tên và slug danh mục là bắt buộc.");
+    }
+
+    if (!["active", "draft"].includes(status)) {
+        throw httpError(400, "Trạng thái danh mục không hợp lệ.");
+    }
 
     return {
         ...existing,
-        id: existing.id || input.id || createId("cat"),
-        slug: slugify(input.slug || existing.slug || name),
+        id: existing.id || createId("cat"),
+        slug,
         name,
-        description: String(input.description || existing.description || "").trim(),
-        status: input.status || existing.status || "active"
+        description: boundedString(inputValue(input, existing, "description"), 5000, "Mô tả danh mục"),
+        status
     };
 }
 
@@ -812,8 +1278,8 @@ function publicProduct(product) {
         slug: product.slug,
         name: product.name,
         categorySlug: product.categorySlug,
-        image: product.image || "",
-        icon: product.icon || "",
+        image: publicAssetUrl(product.image),
+        icon: publicAssetUrl(product.icon),
         discount: product.discount || "",
         price: Number(product.price || 0),
         oldPrice: product.oldPrice ?? null,
@@ -863,6 +1329,42 @@ function adminCategories(db) {
     return (db.categories || []).map(publicCategory);
 }
 
+function validateProductForDb(product, db, existingId = "") {
+    if (!db.categories.some((category) => category.slug === product.categorySlug)) {
+        throw httpError(400, "Danh mục sản phẩm không tồn tại.");
+    }
+
+    if (db.products.some((item) => item.id !== existingId && item.slug === product.slug)) {
+        throw httpError(409, "Slug sản phẩm đã tồn tại.");
+    }
+
+    const sellingPrice = priceToVnd(product.price);
+
+    if (product.status === "active" && sellingPrice <= 0) {
+        throw httpError(400, "Sản phẩm đang bán phải có giá lớn hơn 0.");
+    }
+
+    if (product.canbosoProductId && product.canbosoCostPrice != null) {
+        const minimumPrice = priceToVnd(product.canbosoCostPrice) + Number(product.canbosoMarkup ?? canbosoMarkupVnd);
+
+        if (sellingPrice < minimumPrice) {
+            throw httpError(400, `Giá bán phải từ ${minimumPrice.toLocaleString("vi-VN")}đ để không thấp hơn giá gốc + markup.`);
+        }
+    }
+}
+
+function validateCategoryForDb(category, db, existingId = "") {
+    if (db.categories.some((item) => item.id !== existingId && item.slug === category.slug)) {
+        throw httpError(409, "Slug danh mục đã tồn tại.");
+    }
+}
+
+function recognizedRevenue(orders) {
+    return (orders || [])
+        .filter((order) => ["paid", "delivered"].includes(order.status))
+        .reduce((sum, order) => sum + Number(order.paidAmount ?? order.total ?? 0), 0);
+}
+
 async function handleApi(req, res, url) {
     const db = await readDb();
     const parts = url.pathname.split("/").filter(Boolean);
@@ -877,15 +1379,21 @@ async function handleApi(req, res, url) {
     if (url.pathname === "/api/public/settings" && req.method === "GET") {
         sendJson(res, 200, {
             telegramBotUrl,
-            telegramEnabled: Boolean(telegramBotUrl)
+            telegramEnabled: Boolean(telegramBotUrl),
+            registrationEnabled: allowRegistration
         });
         return;
     }
 
     if (resource === "bot") {
-        if (!requireBot(req, res)) return;
-
         if (parts[2] === "orders" && parts[3] && req.method === "GET") {
+            if (!consumeRateLimit(botAttempts, clientIp(req) || "unknown", 120, 60 * 1000)) {
+                sendError(res, 429, "Bot gọi API quá nhanh.");
+                return;
+            }
+
+            if (!requireBot(req, res, `${req.method}.${url.pathname}`)) return;
+
             const order = db.orders?.find((item) => item.id === parts[3]);
 
             if (!order) {
@@ -893,11 +1401,24 @@ async function handleApi(req, res, url) {
                 return;
             }
 
-            sendJson(res, 200, publicOrder(order, req));
+            sendJson(res, 200, publicOrder(order, {
+                includeCustomer: true,
+                includeDelivery: true,
+                includeIntegration: true
+            }));
             return;
         }
 
         if (parts[2] === "order-paid" && req.method === "POST") {
+            if (!consumeRateLimit(botAttempts, clientIp(req) || "unknown", 60, 60 * 1000)) {
+                sendError(res, 429, "Bot gọi API quá nhanh.");
+                return;
+            }
+
+            const rawBody = await readRawBody(req);
+
+            if (!requireBot(req, res, rawBody)) return;
+
             const input = await readBody(req);
             const orderId = String(input.orderId || input.id || "").trim();
             const index = db.orders?.findIndex((item) => item.id === orderId) ?? -1;
@@ -907,53 +1428,107 @@ async function handleApi(req, res, url) {
                 return;
             }
 
+            const requestedStatus = String(input.status || "paid").trim().toLowerCase();
+            const expectedAmount = Number(db.orders[index].total || 0);
+            const submittedAmount = Number(input.amount ?? input.total);
+            const paymentRef = boundedString(input.botPaymentRef || input.paymentRef || "", 200, "Mã giao dịch");
+
+            if (!["paid", "delivered"].includes(requestedStatus)) {
+                sendError(res, 400, "Callback thanh toán chỉ chấp nhận trạng thái paid hoặc delivered.");
+                return;
+            }
+
+            if (!Number.isFinite(submittedAmount) || submittedAmount !== expectedAmount) {
+                sendError(res, 409, "Số tiền thanh toán không khớp tổng đơn hàng.");
+                return;
+            }
+
+            if (botRequirePaymentRef && !paymentRef) {
+                sendError(res, 400, "Thiếu mã giao dịch botPaymentRef.");
+                return;
+            }
+
+            if (["cancelled", "refunded"].includes(db.orders[index].status)) {
+                sendError(res, 409, "Đơn hàng đã bị hủy hoặc hoàn tiền.");
+                return;
+            }
+
+            if (
+                db.orders[index].botPaymentRef
+                && paymentRef
+                && db.orders[index].botPaymentRef !== paymentRef
+            ) {
+                sendError(res, 409, "Mã giao dịch không khớp callback trước đó.");
+                return;
+            }
+
+            if (
+                paymentRef
+                && db.orders.some((order, orderIndex) => orderIndex !== index && order.botPaymentRef === paymentRef)
+            ) {
+                sendError(res, 409, "Mã giao dịch đã được dùng cho đơn hàng khác.");
+                return;
+            }
+
             const now = new Date().toISOString();
             db.orders[index] = {
                 ...db.orders[index],
-                status: String(input.status || "paid"),
-                total: Number(input.amount || input.total || db.orders[index].total || 0),
-                amount: Number(input.amount || input.total || db.orders[index].total || 0),
-                telegramUserId: String(input.telegramUserId || db.orders[index].telegramUserId || ""),
-                telegramUsername: String(input.telegramUsername || db.orders[index].telegramUsername || ""),
-                botPaymentRef: String(input.botPaymentRef || input.paymentRef || db.orders[index].botPaymentRef || ""),
-                paidAt: String(input.paidAt || now),
-                deliveredAt: input.deliveredAt ? String(input.deliveredAt) : db.orders[index].deliveredAt || "",
-                botRaw: input,
+                status: db.orders[index].canbosoFulfillmentStatus === "completed"
+                    ? (db.orders[index].status || "delivered")
+                    : "paid",
+                paidAmount: submittedAmount,
+                telegramUserId: boundedString(input.telegramUserId || db.orders[index].telegramUserId || "", 80, "Telegram user id"),
+                telegramUsername: boundedString(input.telegramUsername || db.orders[index].telegramUsername || "", 80, "Telegram username"),
+                botPaymentRef: paymentRef || db.orders[index].botPaymentRef || "",
+                paidAt: db.orders[index].paidAt || now,
+                canbosoFulfillmentStatus: db.orders[index].canbosoFulfillmentStatus === "completed"
+                    ? "completed"
+                    : "processing",
                 updatedAt: now
             };
 
-            if ((db.orders[index].status === "paid" || db.orders[index].status === "delivered")) {
+            await writeDb(db);
+
+            if (db.orders[index].canbosoFulfillmentStatus !== "completed") {
                 try {
-                    const fulfillment = await fulfillOrderWithCanboso(db.orders[index], input);
+                    const fulfillment = await fulfillOrderWithCanboso(db.orders[index]);
 
                     db.orders[index] = {
                         ...db.orders[index],
-                        canbosoFulfillmentStatus: fulfillment.skipped ? (db.orders[index].canbosoFulfillmentStatus || "skipped") : "completed",
+                        canbosoFulfillmentStatus: fulfillment.skipped
+                            ? "skipped"
+                            : (fulfillment.completed ? "completed" : "pending"),
                         canbosoFulfillmentMessage: fulfillment.reason || "",
                         canbosoResults: fulfillment.results || db.orders[index].canbosoResults || [],
-                        deliveredAccounts: (fulfillment.results || [])
-                            .flatMap((item) => item.response?.deliveredAccounts || []),
+                        deliveredAccounts: fulfillment.deliveredAccounts || db.orders[index].deliveredAccounts || [],
                         updatedAt: new Date().toISOString()
                     };
 
-                    if (!fulfillment.skipped) {
+                    if (!fulfillment.skipped && fulfillment.completed) {
                         db.orders[index].status = "delivered";
-                        db.orders[index].deliveredAt = db.orders[index].deliveredAt || new Date().toISOString();
+                        db.orders[index].deliveredAt = new Date().toISOString();
                     }
                 } catch (error) {
                     db.orders[index] = {
                         ...db.orders[index],
                         canbosoFulfillmentStatus: "failed",
-                        canbosoFulfillmentMessage: error.message || "Canboso purchase failed",
+                        canbosoFulfillmentMessage: redactSensitive(error.message || "Canboso purchase failed"),
                         updatedAt: new Date().toISOString()
                     };
                 }
             }
 
             await writeDb(db);
-            sendJson(res, 200, publicOrder(db.orders[index], req));
+            sendJson(res, 200, publicOrder(db.orders[index], {
+                includeCustomer: true,
+                includeDelivery: true,
+                includeIntegration: true
+            }));
             return;
         }
+
+        sendError(res, 404, "Bot API không tồn tại.");
+        return;
     }
 
     if (url.pathname === "/api/auth/login" && req.method === "POST") {
@@ -979,10 +1554,14 @@ async function handleApi(req, res, url) {
         }
 
         clearLoginRateLimit(req);
-        const token = createSessionToken(user.id);
+        if (user.role !== "admin" && !String(user.passwordHash || "").startsWith("scrypt$")) {
+            user.passwordHash = createPasswordHash(input.password);
+            await writeDb(db);
+        }
+
+        const token = createSessionToken(user);
 
         sendJson(res, 200, {
-            token,
             user: {
                 id: user.id,
                 username: user.username,
@@ -990,18 +1569,34 @@ async function handleApi(req, res, url) {
                 email: user.email || "",
                 role: user.role
             }
-        });
+        }, { "set-cookie": sessionCookie(token) });
         return;
     }
 
     if (url.pathname === "/api/auth/register" && req.method === "POST") {
-        const input = await readBody(req);
-        const username = String(input.username || input.email || "").trim();
-        const email = String(input.email || "").trim().toLowerCase();
-        const password = String(input.password || "");
+        if (!allowRegistration) {
+            sendError(res, 403, "Đăng ký tài khoản đang tạm khóa.");
+            return;
+        }
 
-        if (!username || !email || password.length < 8) {
-            sendError(res, 400, "Vui lòng nhập email và mật khẩu từ 6 ký tự.");
+        if (!consumeRateLimit(registerAttempts, clientIp(req) || "unknown", 5, 60 * 60 * 1000)) {
+            sendError(res, 429, "Bạn đã đăng ký quá nhiều lần. Vui lòng thử lại sau.");
+            return;
+        }
+
+        const input = await readBody(req);
+        const username = boundedString(input.username || input.email || "", 80, "Tên đăng nhập");
+        const email = boundedString(input.email || "", 254, "Email").toLowerCase();
+        const password = String(input.password || "");
+        const minimumPasswordLength = isProduction ? 12 : 8;
+
+        if (
+            !/^[\p{L}\p{N}_.@+-]+$/u.test(username)
+            || !isValidEmail(email)
+            || password.length < minimumPasswordLength
+            || password.length > 200
+        ) {
+            sendError(res, 400, `Vui lòng nhập email hợp lệ và mật khẩu từ ${minimumPasswordLength} ký tự.`);
             return;
         }
 
@@ -1019,10 +1614,11 @@ async function handleApi(req, res, url) {
             id: createId("user"),
             username,
             email,
-            name: input.name || username,
-            firstName: input.firstName || "",
-            lastName: input.lastName || "",
+            name: boundedString(input.name || username, 120, "Tên hiển thị"),
+            firstName: boundedString(input.firstName || "", 80, "Tên"),
+            lastName: boundedString(input.lastName || "", 80, "Họ"),
             role: "customer",
+            sessionVersion: 0,
             passwordHash: createPasswordHash(password),
             createdAt: new Date().toISOString()
         };
@@ -1031,10 +1627,9 @@ async function handleApi(req, res, url) {
         db.users.push(user);
         await writeDb(db);
 
-        const token = createSessionToken(user.id);
+        const token = createSessionToken(user);
 
         sendJson(res, 201, {
-            token,
             user: {
                 id: user.id,
                 username: user.username,
@@ -1042,7 +1637,7 @@ async function handleApi(req, res, url) {
                 email: user.email,
                 role: user.role
             }
-        });
+        }, { "set-cookie": sessionCookie(token) });
         return;
     }
 
@@ -1095,29 +1690,43 @@ async function handleApi(req, res, url) {
         const input = await readBody(req);
         const index = db.users.findIndex((item) => item.id === user.id);
         const nextPassword = String(input.newPassword || "");
+        const nextEmail = boundedString(input.email || user.email || "", 254, "Email").toLowerCase();
 
         if (nextPassword) {
-            if (nextPassword.length < 8) {
-                sendError(res, 400, "Mật khẩu mới cần ít nhất 8 ký tự.");
+            const minimumPasswordLength = isProduction ? 12 : 8;
+
+            if (nextPassword.length < minimumPasswordLength || nextPassword.length > 200) {
+                sendError(res, 400, `Mật khẩu mới cần từ ${minimumPasswordLength} đến 200 ký tự.`);
                 return;
             }
 
-            if (input.currentPassword && !verifyPassword(input.currentPassword, user.passwordHash)) {
+            if (!input.currentPassword || !verifyPassword(input.currentPassword, user.passwordHash)) {
                 sendError(res, 400, "Mật khẩu hiện tại không đúng.");
                 return;
             }
         }
 
+        if (!isValidEmail(nextEmail)) {
+            sendError(res, 400, "Email không hợp lệ.");
+            return;
+        }
+
+        if (db.users.some((item) => item.id !== user.id && item.email?.toLowerCase() === nextEmail)) {
+            sendError(res, 409, "Email đã được tài khoản khác sử dụng.");
+            return;
+        }
+
         db.users[index] = {
             ...user,
-            firstName: String(input.firstName || "").trim(),
-            lastName: String(input.lastName || "").trim(),
-            name: String(input.name || user.name || user.username).trim(),
-            email: String(input.email || user.email || "").trim().toLowerCase(),
+            firstName: boundedString(input.firstName || "", 80, "Tên"),
+            lastName: boundedString(input.lastName || "", 80, "Họ"),
+            name: boundedString(input.name || user.name || user.username, 120, "Tên hiển thị"),
+            email: nextEmail,
+            sessionVersion: nextPassword ? Number(user.sessionVersion || 0) + 1 : Number(user.sessionVersion || 0),
             passwordHash: nextPassword ? createPasswordHash(nextPassword) : user.passwordHash
         };
         await writeDb(db);
-        sendJson(res, 200, {
+        const response = {
             id: db.users[index].id,
             username: db.users[index].username,
             name: db.users[index].name,
@@ -1125,7 +1734,13 @@ async function handleApi(req, res, url) {
             firstName: db.users[index].firstName,
             lastName: db.users[index].lastName,
             role: db.users[index].role
-        });
+        };
+
+        const responseHeaders = nextPassword
+            ? { "set-cookie": sessionCookie(createSessionToken(db.users[index])) }
+            : {};
+
+        sendJson(res, 200, response, responseHeaders);
         return;
     }
 
@@ -1136,15 +1751,30 @@ async function handleApi(req, res, url) {
             return;
         }
 
-        sendJson(res, 200, db.orders.filter((order) => order.userId === user.id));
+        sendJson(
+            res,
+            200,
+            db.orders
+                .filter((order) => order.userId === user.id)
+                .map((order) => publicOrder(order, {
+                    includeCustomer: true,
+                    includeDelivery: true,
+                    includeIntegration: true
+                }))
+        );
         return;
     }
 
     if (url.pathname === "/api/auth/logout" && req.method === "POST") {
-        const header = req.headers.authorization || "";
-        const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-        sessions.delete(token);
-        sendJson(res, 200, { ok: true });
+        const context = authContext(req, db);
+
+        if (context?.user) {
+            const index = db.users.findIndex((item) => item.id === context.user.id);
+            db.users[index].sessionVersion = Number(db.users[index].sessionVersion || 0) + 1;
+            await writeDb(db);
+        }
+
+        sendJson(res, 200, { ok: true }, { "set-cookie": clearSessionCookie() });
         return;
     }
 
@@ -1153,7 +1783,7 @@ async function handleApi(req, res, url) {
             products: publicProducts(db).length,
             categories: publicCategories(db).length,
             orders: isAdmin(req, db) ? db.orders.length : 0,
-            revenue: isAdmin(req, db) ? db.orders.reduce((sum, order) => sum + Number(order.total || 0), 0) : 0
+            revenue: isAdmin(req, db) ? recognizedRevenue(db.orders) : 0
         });
         return;
     }
@@ -1181,7 +1811,7 @@ async function handleApi(req, res, url) {
                 products: db.products.length,
                 categories: db.categories.length,
                 orders: db.orders.length,
-                revenue: db.orders.reduce((sum, order) => sum + Number(order.total || 0), 0)
+                revenue: recognizedRevenue(db.orders)
             });
             return;
         }
@@ -1206,6 +1836,7 @@ async function handleApi(req, res, url) {
 
             if (req.method === "POST") {
                 const product = normalizeProduct(await readBody(req));
+                validateProductForDb(product, db);
                 db.products.unshift(product);
                 await writeDb(db);
                 sendJson(res, 201, publicProduct(product));
@@ -1219,7 +1850,9 @@ async function handleApi(req, res, url) {
             }
 
             if (req.method === "PUT") {
-                db.products[index] = normalizeProduct(await readBody(req), db.products[index]);
+                const product = normalizeProduct(await readBody(req), db.products[index]);
+                validateProductForDb(product, db, db.products[index].id);
+                db.products[index] = product;
                 await writeDb(db);
                 sendJson(res, 200, publicProduct(db.products[index]));
                 return;
@@ -1241,6 +1874,7 @@ async function handleApi(req, res, url) {
 
             if (req.method === "POST") {
                 const category = normalizeCategory(await readBody(req));
+                validateCategoryForDb(category, db);
                 db.categories.push(category);
                 await writeDb(db);
                 sendJson(res, 201, publicCategory(category));
@@ -1254,13 +1888,20 @@ async function handleApi(req, res, url) {
             }
 
             if (req.method === "PUT") {
-                db.categories[index] = normalizeCategory(await readBody(req), db.categories[index]);
+                const category = normalizeCategory(await readBody(req), db.categories[index]);
+                validateCategoryForDb(category, db, db.categories[index].id);
+                db.categories[index] = category;
                 await writeDb(db);
                 sendJson(res, 200, publicCategory(db.categories[index]));
                 return;
             }
 
             if (req.method === "DELETE") {
+                if (db.products.some((product) => product.categorySlug === db.categories[index].slug)) {
+                    sendError(res, 409, "Không thể xóa danh mục đang có sản phẩm.");
+                    return;
+                }
+
                 const [removed] = db.categories.splice(index, 1);
                 await writeDb(db);
                 sendJson(res, 200, publicCategory(removed));
@@ -1281,9 +1922,22 @@ async function handleApi(req, res, url) {
             }
 
             if (req.method === "PUT") {
+                const input = await readBody(req);
+                const allowedStatuses = ["created", "pending", "paid", "delivered", "failed", "cancelled", "refunded"];
+                const nextStatus = String(input.status || db.orders[index].status);
+
+                if (!allowedStatuses.includes(nextStatus)) {
+                    sendError(res, 400, "Trạng thái đơn hàng không hợp lệ.");
+                    return;
+                }
+
                 db.orders[index] = {
                     ...db.orders[index],
-                    ...(await readBody(req))
+                    status: nextStatus,
+                    note: hasOwn(input, "note")
+                        ? boundedString(input.note, 1000, "Ghi chú")
+                        : db.orders[index].note,
+                    updatedAt: new Date().toISOString()
                 };
                 await writeDb(db);
                 sendJson(res, 200, db.orders[index]);
@@ -1298,35 +1952,8 @@ async function handleApi(req, res, url) {
             return;
         }
 
-        if (!requireAdmin(req, res, db)) return;
-
-        if (req.method === "POST") {
-            const product = normalizeProduct(await readBody(req));
-            db.products.unshift(product);
-            await writeDb(db);
-            sendJson(res, 201, product);
-            return;
-        }
-
-        const index = db.products.findIndex((item) => item.id === id);
-        if (index < 0) {
-            sendError(res, 404, "Không tìm thấy sản phẩm.");
-            return;
-        }
-
-        if (req.method === "PUT") {
-            db.products[index] = normalizeProduct(await readBody(req), db.products[index]);
-            await writeDb(db);
-            sendJson(res, 200, db.products[index]);
-            return;
-        }
-
-        if (req.method === "DELETE") {
-            const [removed] = db.products.splice(index, 1);
-            await writeDb(db);
-            sendJson(res, 200, removed);
-            return;
-        }
+        sendError(res, 405, "Hãy dùng API /api/admin/products.");
+        return;
     }
 
     if (resource === "categories") {
@@ -1335,35 +1962,8 @@ async function handleApi(req, res, url) {
             return;
         }
 
-        if (!requireAdmin(req, res, db)) return;
-
-        if (req.method === "POST") {
-            const category = normalizeCategory(await readBody(req));
-            db.categories.push(category);
-            await writeDb(db);
-            sendJson(res, 201, category);
-            return;
-        }
-
-        const index = db.categories.findIndex((item) => item.id === id);
-        if (index < 0) {
-            sendError(res, 404, "Không tìm thấy danh mục.");
-            return;
-        }
-
-        if (req.method === "PUT") {
-            db.categories[index] = normalizeCategory(await readBody(req), db.categories[index]);
-            await writeDb(db);
-            sendJson(res, 200, db.categories[index]);
-            return;
-        }
-
-        if (req.method === "DELETE") {
-            const [removed] = db.categories.splice(index, 1);
-            await writeDb(db);
-            sendJson(res, 200, removed);
-            return;
-        }
+        sendError(res, 405, "Hãy dùng API /api/admin/categories.");
+        return;
     }
 
     if (resource === "orders") {
@@ -1374,6 +1974,11 @@ async function handleApi(req, res, url) {
         }
 
         if (req.method === "POST") {
+            if (!consumeRateLimit(orderAttempts, clientIp(req) || "unknown", 20, 10 * 60 * 1000)) {
+                sendError(res, 429, "Bạn tạo đơn quá nhanh. Vui lòng thử lại sau.");
+                return;
+            }
+
             const input = await readBody(req);
             const user = authUser(req, db);
             const requestedItems = Array.isArray(input.items) && input.items.length
@@ -1385,6 +1990,11 @@ async function handleApi(req, res, url) {
                     options: input.options || {}
                 }];
 
+            if (requestedItems.length > 20) {
+                sendError(res, 400, "Một đơn hàng chỉ được chứa tối đa 20 dòng sản phẩm.");
+                return;
+            }
+
             const items = requestedItems.map((item) => {
                 const product = db.products.find((current) =>
                     current.id === item.productId
@@ -1392,11 +2002,25 @@ async function handleApi(req, res, url) {
                     || current.slug === item.slug
                 );
 
-                if (!product || product.status === "draft") {
+                if (!product || product.status !== "active" || Number(product.stock || 0) <= 0) {
                     return null;
                 }
 
-                const quantity = Math.max(1, Math.min(99, Number(item.quantity || 1)));
+                const requestedQuantity = Number(item.quantity || 1);
+
+                if (!Number.isInteger(requestedQuantity) || requestedQuantity < 1 || requestedQuantity > 99) {
+                    throw httpError(400, "Số lượng sản phẩm không hợp lệ.");
+                }
+
+                if (requestedQuantity > Number(product.stock || 0)) {
+                    throw httpError(409, `Sản phẩm ${product.name} không đủ tồn kho.`);
+                }
+
+                if (product.canbosoProductId && product.requiresCustomerEmail && requestedQuantity !== 1) {
+                    throw httpError(400, `Sản phẩm ${product.name} chỉ cho phép số lượng 1 mỗi đơn.`);
+                }
+
+                const quantity = requestedQuantity;
                 const unitPrice = priceToVnd(product.price);
                 const costPrice = priceToVnd(product.canbosoCostPrice || 0);
 
@@ -1404,7 +2028,7 @@ async function handleApi(req, res, url) {
                     productId: product.id,
                     productSlug: product.slug,
                     productName: product.name,
-                    image: product.image || product.icon || "",
+                    image: publicAssetUrl(product.image || product.icon || ""),
                     quantity,
                     unitPrice,
                     total: unitPrice * quantity,
@@ -1413,24 +2037,63 @@ async function handleApi(req, res, url) {
                     canbosoProductId: product.canbosoProductId || "",
                     canbosoSlotMonths: product.canbosoSlotMonths || null,
                     requiresCustomerEmail: Boolean(product.requiresCustomerEmail),
-                    options: item.options || {}
+                    options: sanitizeOrderOptions(item.options)
                 };
             }).filter(Boolean);
 
-            if (!items.length) {
-                sendError(res, 400, "Không tìm thấy sản phẩm để tạo đơn.");
+            if (!items.length || items.length !== requestedItems.length) {
+                sendError(res, 400, "Có sản phẩm không tồn tại, đã ẩn hoặc hết hàng.");
                 return;
+            }
+
+            if (items.filter((item) => item.canbosoProductId).length > 5) {
+                sendError(res, 400, "Một đơn chỉ được chứa tối đa 5 dòng sản phẩm Canboso.");
+                return;
+            }
+
+            const quantityByProduct = new Map();
+
+            for (const item of items) {
+                quantityByProduct.set(item.productId, (quantityByProduct.get(item.productId) || 0) + item.quantity);
+            }
+
+            for (const [productId, quantity] of quantityByProduct) {
+                const stock = Number(db.products.find((product) => product.id === productId)?.stock || 0);
+
+                if (quantity > stock) {
+                    sendError(res, 409, "Tổng số lượng trong giỏ vượt quá tồn kho.");
+                    return;
+                }
             }
 
             const total = items.reduce((sum, item) => sum + item.total, 0);
             const firstItem = items[0];
             const now = new Date().toISOString();
+            const optionEmail = items
+                .map((item) => item.options.customerEmail || item.options.email || item.options.accountIdentifier || "")
+                .find((value) => isValidEmail(value));
+            const customerEmail = boundedString(
+                input.customerEmail || input.email || optionEmail || "",
+                254,
+                "Email khách hàng"
+            ).toLowerCase();
+
+            if (customerEmail && !isValidEmail(customerEmail)) {
+                sendError(res, 400, "Email khách hàng không hợp lệ.");
+                return;
+            }
+
+            if (items.some((item) => item.requiresCustomerEmail) && !customerEmail) {
+                sendError(res, 400, "Sản phẩm này yêu cầu email khách hàng.");
+                return;
+            }
+
             const order = {
                 id: createId("ord"),
                 userId: user?.id || null,
-                customerName: String(input.customerName || "").trim(),
-                customerPhone: String(input.customerPhone || "").trim(),
-                customerEmail: String(input.customerEmail || input.email || "").trim().toLowerCase(),
+                customerName: boundedString(input.customerName || "", 120, "Tên khách hàng"),
+                customerPhone: boundedString(input.customerPhone || "", 30, "Số điện thoại"),
+                customerEmail,
                 productId: firstItem.productId,
                 productSlug: firstItem.productSlug,
                 productName: firstItem.productName,
@@ -1442,39 +2105,29 @@ async function handleApi(req, res, url) {
                 profitTotal: items.reduce((sum, item) => sum + Number(item.profit || 0), 0),
                 status: "created",
                 source: "website",
-                note: String(input.note || "").trim(),
+                note: boundedString(input.note || "", 1000, "Ghi chú"),
                 createdAt: now,
                 updatedAt: now
             };
             db.orders.unshift(order);
             await writeDb(db);
-            sendJson(res, 201, publicOrder(order, req));
+            sendJson(res, 201, publicOrder(order));
             return;
         }
 
-        if (!requireAdmin(req, res, db)) return;
-
-        const index = db.orders.findIndex((item) => item.id === id);
-        if (index < 0) {
-            sendError(res, 404, "Không tìm thấy đơn hàng.");
-            return;
-        }
-
-        if (req.method === "PUT") {
-            db.orders[index] = {
-                ...db.orders[index],
-                ...(await readBody(req))
-            };
-            await writeDb(db);
-            sendJson(res, 200, db.orders[index]);
-            return;
-        }
+        sendError(res, 405, "Phương thức không được hỗ trợ.");
+        return;
     }
 
     sendError(res, 404, "API không tồn tại.");
 }
 
 async function serveStatic(req, res, url) {
+    if (!["GET", "HEAD"].includes(req.method)) {
+        sendError(res, 405, "Phương thức không được hỗ trợ.");
+        return;
+    }
+
     if (url.pathname === "/js/products.js") {
         await serveLiveCatalog(res, "products");
         return;
@@ -1485,22 +2138,32 @@ async function serveStatic(req, res, url) {
         return;
     }
 
-    const pathname = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
+    let pathname;
+
+    try {
+        pathname = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
+    } catch {
+        sendError(res, 400, "Đường dẫn không hợp lệ.");
+        return;
+    }
+
     const normalizedPathname = pathname.replaceAll("\\", "/");
+    const lowercasePathname = normalizedPathname.toLowerCase();
 
     if (
-        normalizedPathname.startsWith("/data/")
-        || normalizedPathname.startsWith("/.git/")
-        || normalizedPathname.includes("/.")
-        || ["/server.js", "/package.json", "/package-lock.json", "/render.yaml"].includes(normalizedPathname)
+        lowercasePathname.startsWith("/data/")
+        || lowercasePathname.startsWith("/.git/")
+        || lowercasePathname.includes("/.")
+        || ["/server.js", "/package.json", "/package-lock.json", "/render.yaml"].includes(lowercasePathname)
     ) {
         sendError(res, 404, "Không tìm thấy file.");
         return;
     }
 
     const filePath = path.resolve(rootDir, `.${pathname}`);
+    const relativePath = path.relative(rootDir, filePath);
 
-    if (!filePath.startsWith(rootDir)) {
+    if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
         sendError(res, 403, "Forbidden");
         return;
     }
@@ -1509,38 +2172,199 @@ async function serveStatic(req, res, url) {
         const stat = await fs.stat(filePath);
         const target = stat.isDirectory() ? path.join(filePath, "index.html") : filePath;
         const ext = path.extname(target).toLowerCase();
+        const publicExtensions = new Set([
+            ".html", ".css", ".js", ".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico", ".woff", ".woff2"
+        ]);
+
+        if (!publicExtensions.has(ext)) {
+            sendError(res, 404, "Không tìm thấy file.");
+            return;
+        }
+
         const content = await fs.readFile(target);
+        const longLivedAsset = [".png", ".jpg", ".jpeg", ".webp", ".ico", ".woff", ".woff2"].includes(ext);
         res.writeHead(200, {
             "content-type": mimeTypes[ext] || "application/octet-stream",
+            "cache-control": longLivedAsset
+                ? "public, max-age=86400"
+                : "no-cache, must-revalidate",
             ...securityHeaders()
         });
-        res.end(content);
+        res.end(req.method === "HEAD" ? undefined : content);
     } catch {
         sendError(res, 404, "Không tìm thấy file.");
     }
 }
 
+function validateProductionConfig() {
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        throw new Error("PORT không hợp lệ.");
+    }
+
+    if (!["127.0.0.1", "0.0.0.0", "::1"].includes(host)) {
+        throw new Error("HOST chỉ được dùng 127.0.0.1, ::1 hoặc 0.0.0.0.");
+    }
+
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        throw new Error("PORT không hợp lệ.");
+    }
+
+    if (!Number.isFinite(maxBodyBytes) || maxBodyBytes < 1024 || maxBodyBytes > 2 * 1024 * 1024) {
+        throw new Error("MAX_BODY_BYTES phải nằm trong khoảng 1KB đến 2MB.");
+    }
+
+    if (!Number.isFinite(sessionMaxAgeMs) || sessionMaxAgeMs < 5 * 60 * 1000 || sessionMaxAgeMs > 7 * 24 * 60 * 60 * 1000) {
+        throw new Error("SESSION_MAX_AGE_MS phải từ 5 phút đến 7 ngày.");
+    }
+
+    if (!Number.isFinite(botWebhookMaxSkewMs) || botWebhookMaxSkewMs < 30000 || botWebhookMaxSkewMs > 15 * 60 * 1000) {
+        throw new Error("BOT_WEBHOOK_MAX_SKEW_MS phải từ 30 giây đến 15 phút.");
+    }
+
+    if (!Number.isInteger(canbosoMarkupVnd) || canbosoMarkupVnd < 0) {
+        throw new Error("CANBOSO_MARKUP_VND không hợp lệ.");
+    }
+
+    if (process.env.DB_SYNC_TO_GITHUB === "true") {
+        throw new Error("DB_SYNC_TO_GITHUB đã bị vô hiệu hóa vì có thể đưa dữ liệu khách hàng lên repository.");
+    }
+
+    if (canbosoApiKey) {
+        const apiUrl = new URL(canbosoApiBase);
+
+        if (apiUrl.protocol !== "https:") {
+            throw new Error("CANBOSO_API_BASE phải dùng HTTPS.");
+        }
+
+        if (isProduction && (apiUrl.hostname !== "canboso.com" || !["", "/"].includes(apiUrl.pathname))) {
+            throw new Error("CANBOSO_API_BASE production chỉ được phép trỏ tới canboso.com.");
+        }
+
+        if (isProduction && !/^tgb_[a-z0-9]{32,}$/i.test(canbosoApiKey)) {
+            throw new Error("CANBOSO_API_KEY không đúng định dạng buyer key.");
+        }
+    }
+
+    if (telegramBotUrl) {
+        const botUrl = new URL(telegramBotUrl);
+
+        if (botUrl.protocol !== "https:" || !["t.me", "telegram.me"].includes(botUrl.hostname)) {
+            throw new Error("TELEGRAM_BOT_URL phải là URL HTTPS của t.me hoặc telegram.me.");
+        }
+    }
+
+    if (!isProduction) {
+        return;
+    }
+
+    const relativeDataPath = path.relative(rootDir, dataFile);
+    const dataInsideSource = relativeDataPath === ""
+        || (!relativeDataPath.startsWith("..") && !path.isAbsolute(relativeDataPath));
+
+    if (dataInsideSource) {
+        throw new Error("Production phải đặt DATA_FILE ngoài thư mục source để tránh deploy ghi đè hoặc làm lộ database.");
+    }
+
+    if (!process.env.SESSION_SECRET || sessionSecret.length < 32) {
+        throw new Error("Production cần SESSION_SECRET ngẫu nhiên tối thiểu 32 ký tự.");
+    }
+
+    if (dataEncryptionSecret.length < 32) {
+        throw new Error("Production cần DATA_ENCRYPTION_KEY ngẫu nhiên tối thiểu 32 ký tự.");
+    }
+
+    if (!adminPassword && !adminPasswordHash) {
+        throw new Error("Production cần ADMIN_PASSWORD hoặc ADMIN_PASSWORD_HASH.");
+    }
+
+    if (adminPassword && adminPassword.length < 12) {
+        throw new Error("ADMIN_PASSWORD production cần tối thiểu 12 ký tự.");
+    }
+
+    if (
+        adminPasswordHash
+        && !/^scrypt\$[a-f0-9]{32}\$[a-f0-9]{64}$/i.test(adminPasswordHash)
+        && !/^pbkdf2\$[a-f0-9]{32}\$[a-f0-9]{64}$/i.test(adminPasswordHash)
+    ) {
+        throw new Error("ADMIN_PASSWORD_HASH không đúng định dạng được hỗ trợ.");
+    }
+
+    if ((telegramBotUrl || canbosoApiKey) && botWebhookSecret.length < 32) {
+        throw new Error("BOT_WEBHOOK_SECRET cần là chuỗi ngẫu nhiên tối thiểu 32 ký tự.");
+    }
+
+    if (botRequireSignature) {
+        if (botWebhookSigningSecret.length < 32) {
+            throw new Error("BOT_WEBHOOK_SIGNING_SECRET cần là chuỗi ngẫu nhiên tối thiểu 32 ký tự.");
+        }
+
+        if (timingSafeEqualString(botWebhookSigningSecret, botWebhookSecret)) {
+            throw new Error("BOT_WEBHOOK_SIGNING_SECRET phải khác BOT_WEBHOOK_SECRET.");
+        }
+    }
+
+
+    if (!botRequireSignature || !botRequirePaymentRef) {
+        throw new Error("Production bắt buộc BOT_REQUIRE_SIGNATURE=true và BOT_REQUIRE_PAYMENT_REF=true.");
+    }
+
+    const configuredSecrets = [
+        sessionSecret,
+        dataEncryptionSecret,
+        adminPassword,
+        botWebhookSecret,
+        botWebhookSigningSecret,
+        canbosoApiKey
+    ].filter(Boolean);
+
+    if (new Set(configuredSecrets).size !== configuredSecrets.length) {
+        throw new Error("Mỗi secret production phải là một giá trị độc lập.");
+    }
+}
+
 const server = http.createServer(async (req, res) => {
-    const url = new URL(req.url, `http://${req.headers.host}`);
+    const url = new URL(req.url, "http://localhost");
 
     try {
         if (url.pathname.startsWith("/api/")) {
-            await handleApi(req, res, url);
+            const task = () => handleApi(req, res, url);
+
+            if (["GET", "HEAD"].includes(req.method)) {
+                await task();
+            } else {
+                await withMutationLock(task);
+            }
+
             return;
         }
 
         await serveStatic(req, res, url);
     } catch (error) {
-        sendError(res, 500, error.message || "Server error");
+        const status = Number(error.statusCode) >= 400 && Number(error.statusCode) <= 599
+            ? Number(error.statusCode)
+            : 500;
+
+        if (status >= 500) {
+            console.error(`${req.method} ${url.pathname} failed:`, redactSensitive(error.message));
+        }
+
+        sendError(res, status, error.expose ? error.message : "Lỗi máy chủ. Vui lòng thử lại sau.");
     }
 });
 
-server.listen(port, "0.0.0.0", () => {
-    console.log(`WebsiteClone server: http://0.0.0.0:${port}`);
-    console.log(`Admin portal: http://0.0.0.0:${port}/admin.html`);
+server.requestTimeout = 30000;
+server.headersTimeout = 15000;
+server.keepAliveTimeout = 5000;
+server.maxHeadersCount = 100;
+
+validateProductionConfig();
+
+server.listen(port, host, () => {
+    console.log(`storetainguyen server: http://${host}:${port}`);
+    console.log(`Admin portal: http://${host}:${port}/admin.html`);
     console.log(`Database file: ${dataFile}`);
 
-    if (!adminPassword && !adminPasswordHash) {
-        console.warn("WARNING: ADMIN_PASSWORD or ADMIN_PASSWORD_HASH is not configured. Do not run production with the default admin password from seed data.");
+    if (!isProduction && !adminPassword && !adminPasswordHash) {
+        console.warn("WARNING: Admin login is disabled until ADMIN_PASSWORD or ADMIN_PASSWORD_HASH is configured.");
     }
 });

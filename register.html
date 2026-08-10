@@ -479,7 +479,13 @@
                             <label>Địa chỉ email *
                                 <input id="registerEmail" type="email" autocomplete="email" required>
                             </label>
-                            <p>Một liên kết để đặt mật khẩu mới sẽ được gửi đến địa chỉ email của bạn.</p>
+                            <label>Mật khẩu *
+                                <input id="registerPassword" type="password" autocomplete="new-password" minlength="12" maxlength="200" required>
+                            </label>
+                            <label>Xác nhận mật khẩu *
+                                <input id="registerPasswordConfirm" type="password" autocomplete="new-password" minlength="12" maxlength="200" required>
+                            </label>
+                            <p>Dùng mật khẩu riêng, không trùng với email, Telegram hoặc các tài khoản khác.</p>
                             <button type="submit">Đăng ký</button>
                         </form>
                     </div>
@@ -792,9 +798,9 @@
 
 
     <!-- JS -->
-    <script src="js/sidebar-hover.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/register.js"></script>
+    <script src="js/sidebar-hover.js?v=6"></script>
+    <script src="js/auth.js?v=6"></script>
+    <script src="js/register.js?v=6"></script>
 
 </body>
 </html>

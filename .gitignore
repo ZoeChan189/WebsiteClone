@@ -1,6 +1,12 @@
 .env
+.env.*
+!.env.example
 .runtime/
 node_modules/
+backups/
+*.bak
+*.pem
+*.key
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
