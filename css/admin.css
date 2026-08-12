@@ -239,6 +239,120 @@ body:not(.admin-authenticated) .stats-grid {
     grid-column: 1 / -1;
 }
 
+.admin-editor-group {
+    min-width: 0;
+    margin: 0;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+}
+
+.admin-editor-group legend {
+    padding: 0 6px;
+    color: var(--ink);
+    font-weight: 900;
+}
+
+.sale-editor-grid,
+.variant-fields,
+.duration-row {
+    display: grid;
+    gap: 12px;
+}
+
+.sale-editor-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.check-label {
+    display: flex !important;
+    align-items: center;
+    grid-auto-flow: column;
+    justify-content: start;
+}
+
+.check-label input,
+.variant-fields input[type="checkbox"],
+.duration-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+}
+
+.editor-group-head,
+.variant-editor-head,
+.duration-editor-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.editor-group-head legend {
+    float: left;
+}
+
+.secondary-action,
+.compact-action {
+    border: 1px solid #c9d7ef;
+    border-radius: 8px;
+    background: #eef5ff;
+    color: var(--blue);
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.secondary-action {
+    padding: 9px 12px;
+}
+
+.compact-action {
+    padding: 7px 10px;
+}
+
+.compact-action.danger {
+    border-color: #fecaca;
+    background: #fff1f2;
+    color: var(--danger);
+}
+
+.variant-editor-item {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.variant-editor-item:last-child {
+    border-bottom: 0;
+}
+
+.variant-editor-head h3,
+.duration-editor-head h4 {
+    margin: 0;
+}
+
+.variant-fields {
+    grid-template-columns: 1fr 1fr 1fr 2fr auto;
+    margin-top: 12px;
+}
+
+.duration-editor {
+    margin-top: 14px;
+    padding-left: 14px;
+    border-left: 3px solid #dbeafe;
+}
+
+.duration-row {
+    grid-template-columns: 1.2fr .8fr 1fr 1fr 1fr auto auto;
+    align-items: end;
+    margin-top: 10px;
+}
+
+.field-help,
+.empty-editor {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
 .form-actions {
     display: flex;
     gap: 10px;
@@ -413,6 +527,17 @@ td small {
 
     .editor-form {
         grid-template-columns: 1fr;
+    }
+
+    .sale-editor-grid,
+    .variant-fields,
+    .duration-row {
+        grid-template-columns: 1fr;
+    }
+
+    .duration-editor {
+        padding-left: 0;
+        border-left: 0;
     }
 
     .stats-grid,

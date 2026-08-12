@@ -721,7 +721,7 @@ function sanitizeOrderOptions(value) {
     const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
     const output = {};
 
-    for (const key of ["package", "variant", "duration", "privateAccount", "accountIdentifier", "customerEmail", "email"]) {
+    for (const key of ["package", "variant", "duration", "customerEmail", "email"]) {
         if (hasOwn(input, key)) {
             output[key] = boundedString(input[key], 200, `options.${key}`);
         }
@@ -748,6 +748,82 @@ function normalizeSlotMonths(value) {
     return months;
 }
 
+function normalizeProductSale(value, existing = {}) {
+    const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    const current = existing && typeof existing === "object" && !Array.isArray(existing) ? existing : {};
+    const enabled = Boolean(inputValue(input, current, "enabled", false));
+    const endsAt = boundedString(inputValue(input, current, "endsAt", ""), 40, "Thời điểm kết thúc sale");
+
+    if (enabled && (!endsAt || !Number.isFinite(Date.parse(endsAt)))) {
+        throw httpError(400, "Sale đang bật cần có thời điểm kết thúc hợp lệ.");
+    }
+
+    return {
+        enabled,
+        endsAt: endsAt ? new Date(endsAt).toISOString() : "",
+        soldPercent: finiteNumber(inputValue(input, current, "soldPercent", 0), "Phần trăm đã bán", { max: 100 }),
+        remaining: finiteNumber(inputValue(input, current, "remaining", 0), "Số lượng sale còn lại", { integer: true })
+    };
+}
+
+function normalizeProductDuration(value, index) {
+    const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    const label = boundedString(input.label, 80, `Tên thời hạn ${index + 1}`);
+    const months = input.months === "" || input.months == null
+        ? null
+        : finiteNumber(input.months, `Số tháng của thời hạn ${index + 1}`, { integer: true, min: 1, max: 120 });
+
+    if (!label) {
+        throw httpError(400, `Thời hạn ${index + 1} cần có tên.`);
+    }
+
+    return {
+        id: slugify(input.id || label) || `duration-${index + 1}`,
+        label,
+        months,
+        price: finiteNumber(input.price, `Giá thời hạn ${label}`, { integer: true }),
+        oldPrice: input.oldPrice === "" || input.oldPrice == null
+            ? null
+            : finiteNumber(input.oldPrice, `Giá cũ thời hạn ${label}`, { integer: true }),
+        available: input.available !== false,
+        highlight: boundedString(input.highlight, 80, `Nhãn thời hạn ${label}`)
+    };
+}
+
+function normalizeProductVariants(value, existing = []) {
+    const source = value === undefined ? existing : value;
+
+    if (source == null) return [];
+    if (!Array.isArray(source) || source.length > 12) {
+        throw httpError(400, "Danh sách loại gói không hợp lệ hoặc vượt quá 12 loại.");
+    }
+
+    const ids = new Set();
+
+    return source.map((value, index) => {
+        const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+        const label = boundedString(input.label, 80, `Tên loại gói ${index + 1}`);
+        const durations = Array.isArray(input.durations) ? input.durations : [];
+
+        if (!label || !durations.length || durations.length > 24) {
+            throw httpError(400, `Loại gói ${index + 1} cần có tên và từ 1 đến 24 thời hạn.`);
+        }
+
+        const id = slugify(input.id || label) || `variant-${index + 1}`;
+        if (ids.has(id)) throw httpError(400, `Mã loại gói ${id} bị trùng.`);
+        ids.add(id);
+
+        return {
+            id,
+            label,
+            available: input.available !== false,
+            accountType: ["shared", "private", "other"].includes(input.accountType) ? input.accountType : "other",
+            description: boundedString(input.description, 500, `Mô tả loại gói ${label}`),
+            durations: durations.map(normalizeProductDuration)
+        };
+    });
+}
+
 function normalizeProduct(input, existing = {}) {
     const name = boundedString(inputValue(input, existing, "name"), 160, "Tên sản phẩm");
     const slug = slugify(inputValue(input, existing, "slug", name) || name);
@@ -760,6 +836,11 @@ function normalizeProduct(input, existing = {}) {
     if (!["active", "draft"].includes(status)) {
         throw httpError(400, "Trạng thái sản phẩm không hợp lệ.");
     }
+
+    const variants = normalizeProductVariants(
+        hasOwn(input, "variants") ? input.variants : undefined,
+        existing.variants || []
+    );
 
     return {
         ...existing,
@@ -779,6 +860,11 @@ function normalizeProduct(input, existing = {}) {
         sold: finiteNumber(inputValue(input, existing, "sold", 0), "Đã bán", { integer: true }),
         status,
         description: boundedString(inputValue(input, existing, "description"), 5000, "Mô tả"),
+        sale: normalizeProductSale(
+            hasOwn(input, "sale") ? input.sale : undefined,
+            existing.sale || {}
+        ),
+        variants,
         canbosoProductId: boundedString(inputValue(input, existing, "canbosoProductId"), 160, "Canboso product_id"),
         canbosoCostPrice: inputValue(input, existing, "canbosoCostPrice", "") === ""
             ? null
@@ -794,6 +880,50 @@ function normalizeProduct(input, existing = {}) {
 function priceToVnd(value) {
     const number = Number(value || 0);
     return number > 0 && number < 10000 ? number * 1000 : number;
+}
+
+function resolveProductSelection(product, requestedOptions = {}) {
+    const options = sanitizeOrderOptions(requestedOptions);
+    const variants = Array.isArray(product.variants) ? product.variants : [];
+
+    if (!variants.length) {
+        return {
+            unitPrice: priceToVnd(product.price),
+            slotMonths: product.canbosoSlotMonths || null,
+            options
+        };
+    }
+
+    const requestedVariant = String(options.variant || options.package || "").trim().toLowerCase();
+    const variant = variants.find((item) =>
+        item.available !== false
+        && (!requestedVariant || [item.id, item.label].some((value) => String(value || "").toLowerCase() === requestedVariant))
+    );
+
+    if (!variant) {
+        throw httpError(400, `Loại gói của sản phẩm ${product.name} không hợp lệ hoặc đã hết hàng.`);
+    }
+
+    const requestedDuration = String(options.duration || "").trim().toLowerCase();
+    const duration = (variant.durations || []).find((item) =>
+        item.available !== false
+        && (!requestedDuration || [item.id, item.label].some((value) => String(value || "").toLowerCase() === requestedDuration))
+    );
+
+    if (!duration) {
+        throw httpError(400, `Thời hạn của sản phẩm ${product.name} không hợp lệ hoặc đã hết hàng.`);
+    }
+
+    return {
+        unitPrice: priceToVnd(duration.price),
+        slotMonths: duration.months || product.canbosoSlotMonths || null,
+        options: {
+            ...options,
+            package: variant.label,
+            variant: variant.label,
+            duration: duration.label
+        }
+    };
 }
 
 function buildTelegramStartUrl(orderId) {
@@ -1022,7 +1152,6 @@ async function canbosoPurchaseItem(order, item, itemIndex = 0) {
         order.customerEmail
         || item.options?.customerEmail
         || item.options?.email
-        || item.options?.accountIdentifier
         || "";
 
     if (customerEmail) {
@@ -1097,11 +1226,61 @@ function formatSold(value) {
     return `${number} đã bán`;
 }
 
+function defaultProductDescription(product) {
+    const name = String(product.name || "Sản phẩm");
+    const normalized = slugify(`${name} ${product.slug || ""}`);
+    const descriptions = [
+        [/chatgpt|openai/, `${name} là gói trợ lý AI hỗ trợ viết nội dung, học tập, lập trình, phân tích tài liệu và xử lý công việc hằng ngày.`],
+        [/youtube/, `${name} mang lại trải nghiệm xem video ít gián đoạn hơn, hỗ trợ phát nền, tải nội dung để xem ngoại tuyến và sử dụng YouTube Music theo quyền lợi của gói.`],
+        [/canva/, `${name} là bộ công cụ thiết kế trực tuyến dành cho banner, bài đăng mạng xã hội, thuyết trình, video ngắn và tài liệu thương hiệu.`],
+        [/spotify/, `${name} phù hợp cho nhu cầu nghe nhạc và podcast thường xuyên với các quyền lợi Premium theo gói đang cung cấp.`],
+        [/netflix|disney|hbo|prime-video|crunchyroll|iqiyi|vieon|fpt-play/, `${name} là gói giải trí trực tuyến để xem phim, series và nội dung độc quyền trên các thiết bị tương thích.`],
+        [/vpn/, `${name} hỗ trợ bảo vệ kết nối Internet, tăng quyền riêng tư và truy cập dịch vụ theo khu vực trên các thiết bị tương thích.`],
+        [/drive|dropbox|onedrive|icloud|google-one/, `${name} cung cấp dung lượng lưu trữ đám mây để sao lưu, đồng bộ và chia sẻ dữ liệu thuận tiện hơn.`],
+        [/duolingo|quizlet|coursera|udemy|english/, `${name} hỗ trợ học tập và rèn luyện kỹ năng với nội dung nâng cao theo quyền lợi của gói.`],
+        [/antivirus|kaspersky|bitdefender|norton|eset|mcafee/, `${name} giúp bảo vệ thiết bị trước phần mềm độc hại và các rủi ro bảo mật phổ biến theo phạm vi của gói.`]
+    ];
+    const match = descriptions.find(([pattern]) => pattern.test(normalized));
+
+    return match?.[1] || `${name} là tài khoản hoặc dịch vụ bản quyền được cung cấp theo đúng loại gói và thời hạn bạn chọn. Thông tin đăng nhập và hướng dẫn sử dụng sẽ được gửi sau khi đơn hàng được xác nhận.`;
+}
+
 function productCatalogItem(product, categories) {
     const category = categories.find((item) => item.slug === product.categorySlug);
     const image = publicAssetUrl(product.image || product.icon || "");
     const price = priceToVnd(product.price);
     const oldPrice = priceToVnd(product.oldPrice);
+
+    const description = product.description || defaultProductDescription(product);
+    const saleEndsAt = Date.parse(product.sale?.endsAt || "");
+    const saleEnabled = Boolean(product.sale?.enabled) && Number.isFinite(saleEndsAt) && saleEndsAt > Date.now();
+    const variants = Array.isArray(product.variants) && product.variants.length
+        ? product.variants.map((variant) => ({
+            ...variant,
+            durations: (variant.durations || []).map((duration) => ({
+                ...duration,
+                price: priceToVnd(duration.price),
+                oldPrice: duration.oldPrice == null ? null : priceToVnd(duration.oldPrice)
+            }))
+        }))
+        : [
+            {
+                id: "default",
+                label: "Dùng riêng",
+                available: product.status !== "draft" && Number(product.stock || 0) !== 0,
+                accountType: "private",
+                description: "Tài khoản riêng do shop cung cấp.",
+                durations: [
+                    {
+                        id: "12m",
+                        label: "12 tháng",
+                        months: 12,
+                        price,
+                        oldPrice
+                    }
+                ]
+            }
+        ];
 
     return {
         slug: product.slug,
@@ -1125,23 +1304,16 @@ function productCatalogItem(product, categories) {
         sold: Number(product.sold || 0),
         highRated: true,
         recentSale: { name: "Khách hàng", time: "vừa xong" },
-        deal: { enabled: false },
-        variantTitle: "Loại gói:",
-        variants: [
-            {
-                id: "default",
-                label: "Dùng riêng",
-                available: product.status !== "draft" && Number(product.stock || 0) !== 0,
-                durations: [
-                    {
-                        id: "12m",
-                        label: "12 tháng",
-                        price,
-                        oldPrice
-                    }
-                ]
+        deal: saleEnabled
+            ? {
+                enabled: true,
+                endsAt: product.sale.endsAt,
+                soldPercent: Number(product.sale.soldPercent || 0),
+                remaining: Number(product.sale.remaining || 0)
             }
-        ],
+            : { enabled: false },
+        variantTitle: "Loại gói:",
+        variants,
         benefits: [
             { icon: "bi-lightning-charge-fill", title: "5-15 phút", text: "Giao TK qua email" },
             { icon: "bi-shield", title: "Bảo hành", text: "Theo thời hạn gói" },
@@ -1149,13 +1321,13 @@ function productCatalogItem(product, categories) {
         ],
         notice: [
             {
-                html: `<strong>Lưu ý:</strong> ${escapeHtml(product.description || "Chọn đúng gói và thời hạn trước khi thêm vào giỏ.")}`
+                html: `<strong>Lưu ý:</strong> ${escapeHtml(description)}`
             }
         ],
         intro: [
             {
                 type: "html",
-                html: `<p>${escapeHtml(product.description || `${product.name} đang được bán tại storetainguyen.`)}</p>`
+                html: `<p>${escapeHtml(description)}</p>`
             }
         ],
         content: [
@@ -1286,7 +1458,9 @@ function publicProduct(product) {
         stock: Number(product.stock || 0),
         rating: Number(product.rating || 4.6),
         sold: Number(product.sold || 0),
-        description: product.description || "",
+        description: product.description || defaultProductDescription(product),
+        sale: product.sale || { enabled: false, endsAt: "", soldPercent: 0, remaining: 0 },
+        variants: Array.isArray(product.variants) ? product.variants : [],
         status: product.status || "active"
     };
 }
@@ -1338,7 +1512,11 @@ function validateProductForDb(product, db, existingId = "") {
         throw httpError(409, "Slug sản phẩm đã tồn tại.");
     }
 
-    const sellingPrice = priceToVnd(product.price);
+    const variantPrices = (product.variants || [])
+        .filter((variant) => variant.available !== false)
+        .flatMap((variant) => (variant.durations || []).filter((duration) => duration.available !== false))
+        .map((duration) => priceToVnd(duration.price));
+    const sellingPrice = variantPrices.length ? Math.min(...variantPrices) : priceToVnd(product.price);
 
     if (product.status === "active" && sellingPrice <= 0) {
         throw httpError(400, "Sản phẩm đang bán phải có giá lớn hơn 0.");
@@ -2021,7 +2199,8 @@ async function handleApi(req, res, url) {
                 }
 
                 const quantity = requestedQuantity;
-                const unitPrice = priceToVnd(product.price);
+                const selection = resolveProductSelection(product, item.options);
+                const unitPrice = selection.unitPrice;
                 const costPrice = priceToVnd(product.canbosoCostPrice || 0);
 
                 return {
@@ -2035,9 +2214,9 @@ async function handleApi(req, res, url) {
                     costPrice,
                     profit: costPrice ? (unitPrice - costPrice) * quantity : null,
                     canbosoProductId: product.canbosoProductId || "",
-                    canbosoSlotMonths: product.canbosoSlotMonths || null,
+                    canbosoSlotMonths: selection.slotMonths,
                     requiresCustomerEmail: Boolean(product.requiresCustomerEmail),
-                    options: sanitizeOrderOptions(item.options)
+                    options: selection.options
                 };
             }).filter(Boolean);
 
@@ -2070,7 +2249,7 @@ async function handleApi(req, res, url) {
             const firstItem = items[0];
             const now = new Date().toISOString();
             const optionEmail = items
-                .map((item) => item.options.customerEmail || item.options.email || item.options.accountIdentifier || "")
+                .map((item) => item.options.customerEmail || item.options.email || "")
                 .find((value) => isValidEmail(value));
             const customerEmail = boundedString(
                 input.customerEmail || input.email || optionEmail || "",

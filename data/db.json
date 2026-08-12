@@ -78,6 +78,51 @@
   "products": [
     {
       "id": "prod_tai_khoan_chatgpt_plus_pro_gpt_5_6",
+      "sale": {
+        "enabled": true,
+        "endsAt": "2026-12-31T16:59:59.000Z",
+        "soldPercent": 44,
+        "remaining": 505
+      },
+      "variants": [
+        {
+          "id": "plus-dung-chung",
+          "label": "Plus dùng chung",
+          "available": true,
+          "accountType": "shared",
+          "description": "Tài khoản được chia sẻ trong nhóm nhỏ, phù hợp khi ưu tiên tiết kiệm.",
+          "durations": [
+            { "id": "1-thang", "label": "1 tháng", "months": 1, "price": 149000, "oldPrice": 499000, "available": true, "highlight": "" },
+            { "id": "3-thang", "label": "3 tháng", "months": 3, "price": 399000, "oldPrice": 1497000, "available": true, "highlight": "Tiết kiệm" },
+            { "id": "5-thang", "label": "5 tháng", "months": 5, "price": 649000, "oldPrice": 2495000, "available": true, "highlight": "-13%" },
+            { "id": "12-thang", "label": "12 tháng", "months": 12, "price": 1249000, "oldPrice": 5988000, "available": true, "highlight": "Phổ biến" }
+          ]
+        },
+        {
+          "id": "plus-dung-rieng",
+          "label": "Plus dùng riêng",
+          "available": true,
+          "accountType": "private",
+          "description": "Tài khoản riêng chỉ một người sử dụng, có thể đổi mật khẩu sau khi nhận.",
+          "durations": [
+            { "id": "1-thang", "label": "1 tháng", "months": 1, "price": 449000, "oldPrice": 529000, "available": true, "highlight": "" },
+            { "id": "3-thang", "label": "3 tháng", "months": 3, "price": 1199000, "oldPrice": 1587000, "available": true, "highlight": "" },
+            { "id": "5-thang", "label": "5 tháng", "months": 5, "price": 1899000, "oldPrice": 2645000, "available": true, "highlight": "" },
+            { "id": "12-thang", "label": "12 tháng", "months": 12, "price": 3999000, "oldPrice": 6348000, "available": true, "highlight": "Dùng lâu dài" }
+          ]
+        },
+        {
+          "id": "pro-dung-rieng",
+          "label": "Pro dùng riêng",
+          "available": true,
+          "accountType": "private",
+          "description": "Tài khoản Pro riêng dành cho nhu cầu sử dụng cường độ cao.",
+          "durations": [
+            { "id": "1-thang", "label": "1 tháng", "months": 1, "price": 3499000, "oldPrice": null, "available": true, "highlight": "" },
+            { "id": "3-thang", "label": "3 tháng", "months": 3, "price": 9999000, "oldPrice": null, "available": true, "highlight": "" }
+          ]
+        }
+      ],
       "slug": "tai-khoan-chatgpt-plus-pro-gpt-5-6",
       "name": "Tài khoản ChatGPT Plus & Pro (GPT-5.6)",
       "categorySlug": "cong-cu-ai",

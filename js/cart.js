@@ -266,13 +266,6 @@
                     item.options?.duration ||
                     item.duration ||
                     "12 tháng"
-                ),
-
-            privateAccount:
-                String(
-                    item.options?.privateAccount ||
-                    item.privateAccount ||
-                    "Có"
                 )
         };
 
@@ -311,8 +304,7 @@
         return [
             id,
             options.package || "",
-            options.duration || "",
-            options.privateAccount || ""
+            options.duration || ""
         ]
             .join("::")
             .toLowerCase();
@@ -586,16 +578,6 @@
 
                             ${escapeHtml(
                                 item.options.duration
-                            )}
-                        </p>
-
-                        <p>
-                            <strong>
-                                Cấp tài khoản riêng tư:
-                            </strong>
-
-                            ${escapeHtml(
-                                item.options.privateAccount
                             )}
                         </p>
 
@@ -1041,13 +1023,6 @@
     }
 
     async function createTelegramCartOrder() {
-        const accountIdentifier = document.querySelector("#upgradeAccountInput")
-            ?.value
-            ?.trim() || "";
-        const currentSlug = new URLSearchParams(window.location.search).get("slug") || "";
-        const customerEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(accountIdentifier)
-            ? accountIdentifier
-            : "";
         const response = await fetch(
             "/api/orders",
             {
@@ -1056,21 +1031,12 @@
                     "content-type": "application/json"
                 },
                 body: JSON.stringify({
-                    items: getItems().map((item) => {
-                        const options = { ...item.options };
-
-                        if (accountIdentifier && item.slug === currentSlug) {
-                            options.accountIdentifier = accountIdentifier;
-                        }
-
-                        return {
-                            productId: item.id,
-                            productSlug: item.slug,
-                            quantity: item.quantity,
-                            options
-                        };
-                    }),
-                    customerEmail,
+                    items: getItems().map((item) => ({
+                        productId: item.id,
+                        productSlug: item.slug,
+                        quantity: item.quantity,
+                        options: item.options
+                    })),
                     note: "Telegram bot cart checkout"
                 })
             }
@@ -1594,44 +1560,6 @@
 
             "12 tháng";
 
-        /* -----------------------------
-           PRIVATE ACCOUNT
-           ----------------------------- */
-
-        let privateAccount =
-            button
-                ?.dataset
-                ?.privateAccount ||
-            "";
-
-        if (!privateAccount) {
-            const checkbox =
-                document.querySelector(
-                    `
-                    input[type="checkbox"][name*="private"],
-                    input[type="checkbox"][name*="account"],
-                    #privateAccount
-                    `
-                );
-
-            if (checkbox) {
-                privateAccount =
-                    checkbox.checked
-                        ? "Có"
-                        : "Không";
-            }
-        }
-
-        if (!privateAccount) {
-            privateAccount =
-                "Có";
-        }
-
-        const accountIdentifier =
-            document.querySelector("#upgradeAccountInput")
-                ?.value
-                ?.trim() || "";
-
         return {
             id:
                 catalogProduct.id ||
@@ -1656,16 +1584,6 @@
                 duration:
                     cleanOptionText(
                         duration
-                    ),
-
-                privateAccount:
-                    cleanOptionText(
-                        privateAccount
-                    ),
-
-                accountIdentifier:
-                    cleanOptionText(
-                        accountIdentifier
                     )
             }
         };

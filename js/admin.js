@@ -4,7 +4,8 @@ const state = {
     products: [],
     categories: [],
     orders: [],
-    authenticated: false
+    authenticated: false,
+    editingVariants: []
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -250,6 +251,102 @@ function updateProductPreview() {
     iconPreview.classList.toggle("hidden", !(icon || image));
 }
 
+function localDateTimeValue(value) {
+    if (!value || !Number.isFinite(Date.parse(value))) return "";
+    const date = new Date(value);
+    const offset = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function emptyDuration() {
+    return {
+        id: "",
+        label: "1 tháng",
+        months: 1,
+        price: 0,
+        oldPrice: "",
+        available: true,
+        highlight: ""
+    };
+}
+
+function emptyVariant() {
+    return {
+        id: "",
+        label: "Loại gói mới",
+        accountType: "other",
+        description: "",
+        available: true,
+        durations: [emptyDuration()]
+    };
+}
+
+function renderVariantEditor() {
+    const root = $("#variantEditor");
+    const variants = state.editingVariants;
+
+    root.innerHTML = variants.length
+        ? variants.map((variant, variantIndex) => `
+            <section class="variant-editor-item" data-variant-index="${variantIndex}">
+                <div class="variant-editor-head">
+                    <h3>Loại gói ${variantIndex + 1}</h3>
+                    <button class="compact-action danger" type="button" data-remove-variant="${variantIndex}">Xóa loại gói</button>
+                </div>
+                <div class="variant-fields">
+                    <label>Tên gói<input data-variant-field="label" value="${escapeHTML(variant.label || "")}" required></label>
+                    <label>Mã gói<input data-variant-field="id" value="${escapeHTML(variant.id || "")}" placeholder="tự tạo từ tên"></label>
+                    <label>Kiểu tài khoản<select data-variant-field="accountType">
+                        <option value="shared" ${variant.accountType === "shared" ? "selected" : ""}>Dùng chung</option>
+                        <option value="private" ${variant.accountType === "private" ? "selected" : ""}>Dùng riêng</option>
+                        <option value="other" ${!['shared', 'private'].includes(variant.accountType) ? "selected" : ""}>Khác</option>
+                    </select></label>
+                    <label>Mô tả<input data-variant-field="description" value="${escapeHTML(variant.description || "")}"></label>
+                    <label class="check-label"><input data-variant-field="available" type="checkbox" ${variant.available !== false ? "checked" : ""}> Đang bán</label>
+                </div>
+                <div class="duration-editor">
+                    <div class="duration-editor-head">
+                        <h4>Thời hạn</h4>
+                        <button class="compact-action" type="button" data-add-duration="${variantIndex}">Thêm thời hạn</button>
+                    </div>
+                    ${(variant.durations || []).map((duration, durationIndex) => `
+                        <div class="duration-row" data-duration-index="${durationIndex}">
+                            <label>Tên<input data-duration-field="label" value="${escapeHTML(duration.label || "")}" required></label>
+                            <label>Số tháng<input data-duration-field="months" type="number" min="1" max="120" value="${duration.months || ""}"></label>
+                            <label>Giá bán<input data-duration-field="price" type="number" min="0" value="${Number(duration.price || 0)}" required></label>
+                            <label>Giá cũ<input data-duration-field="oldPrice" type="number" min="0" value="${duration.oldPrice ?? ""}"></label>
+                            <label>Nhãn<input data-duration-field="highlight" value="${escapeHTML(duration.highlight || "")}" placeholder="Phổ biến"></label>
+                            <label class="check-label"><input data-duration-field="available" type="checkbox" ${duration.available !== false ? "checked" : ""}> Bán</label>
+                            <button class="compact-action danger" type="button" data-remove-duration="${durationIndex}" aria-label="Xóa thời hạn">Xóa</button>
+                        </div>
+                    `).join("")}
+                </div>
+            </section>
+        `).join("")
+        : '<p class="empty-editor">Chưa có loại gói. Giá sản phẩm chung sẽ được sử dụng cho đến khi bạn thêm loại gói.</p>';
+}
+
+function readVariantEditor() {
+    return Array.from(document.querySelectorAll(".variant-editor-item")).map((variantElement) => ({
+        id: variantElement.querySelector('[data-variant-field="id"]').value.trim(),
+        label: variantElement.querySelector('[data-variant-field="label"]').value.trim(),
+        accountType: variantElement.querySelector('[data-variant-field="accountType"]').value,
+        description: variantElement.querySelector('[data-variant-field="description"]').value.trim(),
+        available: variantElement.querySelector('[data-variant-field="available"]').checked,
+        durations: Array.from(variantElement.querySelectorAll(".duration-row")).map((durationElement) => ({
+            label: durationElement.querySelector('[data-duration-field="label"]').value.trim(),
+            months: durationElement.querySelector('[data-duration-field="months"]').value,
+            price: Number(durationElement.querySelector('[data-duration-field="price"]').value),
+            oldPrice: durationElement.querySelector('[data-duration-field="oldPrice"]').value,
+            highlight: durationElement.querySelector('[data-duration-field="highlight"]').value.trim(),
+            available: durationElement.querySelector('[data-duration-field="available"]').checked
+        }))
+    }));
+}
+
+function syncVariantEditor() {
+    state.editingVariants = readVariantEditor();
+}
+
 function resetProductForm(product = {}) {
     $("#productId").value = product.id || "";
     $("#productName").value = product.name || "";
@@ -270,6 +367,12 @@ function resetProductForm(product = {}) {
     $("#productSold").value = product.sold || 0;
     $("#productStatus").value = product.status || "active";
     $("#productDescription").value = product.description || "";
+    $("#productSaleEnabled").checked = Boolean(product.sale?.enabled);
+    $("#productSaleEndsAt").value = localDateTimeValue(product.sale?.endsAt);
+    $("#productSaleSoldPercent").value = Number(product.sale?.soldPercent || 0);
+    $("#productSaleRemaining").value = Number(product.sale?.remaining || 0);
+    state.editingVariants = JSON.parse(JSON.stringify(product.variants || []));
+    renderVariantEditor();
     updateProductPreview();
     $("#productForm").classList.remove("hidden");
 }
@@ -302,7 +405,14 @@ function productPayload() {
         rating: Number($("#productRating").value),
         sold: Number($("#productSold").value),
         status: $("#productStatus").value,
-        description: $("#productDescription").value
+        description: $("#productDescription").value,
+        sale: {
+            enabled: $("#productSaleEnabled").checked,
+            endsAt: $("#productSaleEndsAt").value,
+            soldPercent: Number($("#productSaleSoldPercent").value || 0),
+            remaining: Number($("#productSaleRemaining").value || 0)
+        },
+        variants: readVariantEditor()
     };
 }
 
@@ -369,6 +479,36 @@ function bindEvents() {
     $("#productSearch")?.addEventListener("input", renderProducts);
     $("#productImage")?.addEventListener("input", updateProductPreview);
     $("#productIcon")?.addEventListener("input", updateProductPreview);
+    $("#addVariantButton")?.addEventListener("click", () => {
+        syncVariantEditor();
+        state.editingVariants.push(emptyVariant());
+        renderVariantEditor();
+    });
+
+    $("#variantEditor")?.addEventListener("click", (event) => {
+        const removeVariant = event.target.dataset.removeVariant;
+        const addDuration = event.target.dataset.addDuration;
+        const removeDuration = event.target.dataset.removeDuration;
+
+        if (removeVariant === undefined && addDuration === undefined && removeDuration === undefined) return;
+
+        syncVariantEditor();
+
+        if (removeVariant !== undefined) {
+            state.editingVariants.splice(Number(removeVariant), 1);
+        }
+
+        if (addDuration !== undefined) {
+            state.editingVariants[Number(addDuration)].durations.push(emptyDuration());
+        }
+
+        if (removeDuration !== undefined) {
+            const variantIndex = Number(event.target.closest(".variant-editor-item").dataset.variantIndex);
+            state.editingVariants[variantIndex].durations.splice(Number(removeDuration), 1);
+        }
+
+        renderVariantEditor();
+    });
 
     $("#productForm").addEventListener("submit", async (event) => {
         event.preventDefault();

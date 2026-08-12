@@ -538,6 +538,14 @@
     gap: 10px;
 }
 
+.selected-option-description {
+    min-height: 18px;
+    margin: 8px 0 0;
+    color: #526174;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
 .product-option-button {
     position: relative;
 
