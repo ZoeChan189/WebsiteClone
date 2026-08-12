@@ -506,7 +506,7 @@ const heroSlides = [
             "ChatGPT Plus",
 
         href:
-            "product.html?slug=chatgpt-plus"
+            "product.html?slug=tai-khoan-chatgpt-plus-pro-gpt-5-6"
     },
 
     {
@@ -517,7 +517,7 @@ const heroSlides = [
             "Claude AI Pro Max",
 
         href:
-            "product.html?slug=claude-ai"
+            "product.html?slug=tai-khoan-claude-ai-pro-max"
     },
 
     {
@@ -528,7 +528,7 @@ const heroSlides = [
             "Google AI Pro",
 
         href:
-            "product.html?slug=google-ai-pro"
+            "product.html?slug=tai-khoan-google-ai-pro"
     }
 
 ];

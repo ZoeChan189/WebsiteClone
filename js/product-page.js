@@ -1003,9 +1003,9 @@ function buildChatGPTContent(item) {
                 ],
                 [
                     "Plus dùng chung",
-                    "6 tháng",
-                    "739.000đ",
-                    "~3.129.000đ"
+                    "5 tháng",
+                    "649.000đ",
+                    "~2.645.000đ"
                 ],
                 [
                     "Plus dùng chung",
@@ -1511,43 +1511,6 @@ function enrichProduct(item) {
 
     if (
         isChatGPTProduct(enriched)
-        &&
-        (
-            !enriched.deal?.enabled
-            ||
-            !Number.isFinite(
-                Number(
-                    enriched.deal.countdownSeconds
-                )
-            )
-            ||
-            Number(
-                enriched.deal.countdownSeconds
-            )
-            <=
-            0
-        )
-    ) {
-        enriched.deal = {
-            enabled:
-                true,
-            soldPercent:
-                30,
-            remaining:
-                626,
-            countdownSeconds:
-                (25 * 86400)
-                +
-                (12 * 3600)
-                +
-                (14 * 60)
-                +
-                52
-        };
-    }
-
-    if (
-        isChatGPTProduct(enriched)
         ||
         !enriched.content?.length ||
         enriched.content.length < 4 ||
@@ -1599,19 +1562,19 @@ function enrichProduct(item) {
 const product =
     enrichProduct(
         catalog[
-            canonicalSlug
+            requestedSlug
         ]
         ||
         findCategoryProduct(
-            canonicalSlug
+            requestedSlug
         )
         ||
         catalog[
-            requestedSlug
+            canonicalSlug
         ]
         ||
         findCategoryProduct(
-            requestedSlug
+            canonicalSlug
         )
         ||
         catalog[
@@ -1637,11 +1600,10 @@ let quantity =
 
 
 let countdownSeconds =
-    product
-        ?.deal
-        ?.countdownSeconds
-    ||
-    0;
+    Math.max(
+        0,
+        Math.ceil((Date.parse(product?.deal?.endsAt || "") - Date.now()) / 1000) || 0
+    );
 
 
 let reviewFilter =
@@ -2081,6 +2043,12 @@ function renderVariants() {
             }
         );
 
+    const description = $("#variantDescription");
+    if (description) {
+        description.textContent = selectedVariant?.description || "";
+        description.style.display = description.textContent ? "" : "none";
+    }
+
 }
 
 
@@ -2496,17 +2464,9 @@ function renderDeal() {
         !deal
         ?.enabled
         ||
-        !Number.isFinite(
-            Number(
-                deal.countdownSeconds
-            )
-        )
+        !Number.isFinite(Date.parse(deal.endsAt || ""))
         ||
-        Number(
-            deal.countdownSeconds
-        )
-        <=
-        0
+        Date.parse(deal.endsAt) <= Date.now()
     ) {
 
         dealBox
@@ -2521,24 +2481,10 @@ function renderDeal() {
         .style.display =
         "";
 
-    countdownSeconds =
-        Number.isFinite(
-            Number(
-                countdownSeconds
-            )
-        )
-        &&
-        Number(
-            countdownSeconds
-        )
-        >
-        0
-            ? Number(
-                countdownSeconds
-            )
-            : Number(
-                deal.countdownSeconds
-            );
+    countdownSeconds = Math.max(
+        0,
+        Math.ceil((Date.parse(deal.endsAt) - Date.now()) / 1000)
+    );
 
 
     const soldPercent = Math.max(
@@ -2610,19 +2556,15 @@ function renderDeal() {
 
 function updateCountdown() {
 
-    countdownSeconds =
-        Number.isFinite(
-            Number(
-                countdownSeconds
-            )
-        )
-            ? Math.max(
-                0,
-                Number(
-                    countdownSeconds
-                )
-            )
-            : 0;
+    const endsAt = Date.parse(product?.deal?.endsAt || "");
+    countdownSeconds = Number.isFinite(endsAt)
+        ? Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))
+        : 0;
+
+    if (countdownSeconds <= 0) {
+        $("#productDealBox").style.display = "none";
+        return;
+    }
 
     const days =
         Math.floor(
@@ -4745,11 +4687,6 @@ function updateQuantity() {
 
 function selectedOrderInfo() {
 
-    const accountIdentifier =
-        $("#upgradeAccountInput")
-            ?.value
-            ?.trim() || "";
-
     return {
 
         slug:
@@ -4769,13 +4706,6 @@ function selectedOrderInfo() {
                 ?.label
             ||
             "",
-
-        accountIdentifier,
-
-        privateAccount:
-            $("#privateAccount")?.checked
-                ? "Có"
-                : "Không",
 
         quantity,
 
@@ -4831,19 +4761,8 @@ async function createTelegramOrder() {
                                     info.variant,
 
                                 duration:
-                                    info.duration,
-
-                                privateAccount:
-                                    info.privateAccount,
-
-                                accountIdentifier:
-                                    info.accountIdentifier
+                                    info.duration
                             },
-
-                            customerEmail:
-                                info.accountIdentifier.includes("@")
-                                    ? info.accountIdentifier
-                                    : "",
 
                             note:
                                 "Telegram bot checkout"
@@ -5708,46 +5627,13 @@ function init() {
         product.deal
             ?.enabled
         &&
-        Number.isFinite(
-            Number(
-                product
-                    .deal
-                    .countdownSeconds
-            )
-        )
+        Number.isFinite(Date.parse(product.deal.endsAt || ""))
         &&
-        Number(
-            product
-                .deal
-                .countdownSeconds
-        )
-        >
-        0
+        Date.parse(product.deal.endsAt) > Date.now()
     ) {
 
         setInterval(
             () => {
-
-                countdownSeconds -=
-                    1;
-
-
-                if (
-                    countdownSeconds
-                    <
-                    0
-                ) {
-
-                    countdownSeconds =
-                        Number(
-                            product
-                                .deal
-                                .countdownSeconds
-                        );
-
-                }
-
-
                 updateCountdown();
 
             },

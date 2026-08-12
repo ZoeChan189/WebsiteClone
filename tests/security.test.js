@@ -252,6 +252,60 @@ test("customer password change requires current password and rotates the HttpOnl
     assert.equal(newSession.response.status, 200);
 });
 
+test("product variants drive server-side order pricing", async () => {
+    const products = await api("/api/public/products");
+    const chatgpt = products.data.find((item) => item.slug === "tai-khoan-chatgpt-plus-pro-gpt-5-6");
+
+    assert.ok(chatgpt);
+    assert.equal(chatgpt.sale.enabled, true);
+    assert.ok(chatgpt.variants.some((variant) => variant.id === "plus-dung-rieng"));
+
+    const selected = await api("/api/orders", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+            productSlug: chatgpt.slug,
+            quantity: 1,
+            options: { variant: "plus-dung-rieng", duration: "3-thang" }
+        })
+    });
+    assert.equal(selected.response.status, 201);
+    assert.equal(selected.data.amount, 1199000);
+
+    const invalid = await api("/api/orders", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+            productSlug: chatgpt.slug,
+            quantity: 1,
+            options: { variant: "khong-ton-tai", duration: "1-thang" }
+        })
+    });
+    assert.equal(invalid.response.status, 400);
+});
+
+test("expired product sale is omitted from the live catalog", async () => {
+    const products = await api("/api/admin/products", { headers: { cookie: adminCookie } });
+    const chatgpt = products.data.find((item) => item.slug === "tai-khoan-chatgpt-plus-pro-gpt-5-6");
+    const expired = await api(`/api/admin/products/${encodeURIComponent(chatgpt.id)}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json", cookie: adminCookie },
+        body: JSON.stringify({
+            sale: { enabled: true, endsAt: "2020-01-01T00:00:00.000Z", soldPercent: 44, remaining: 10 }
+        })
+    });
+    assert.equal(expired.response.status, 200);
+
+    const catalogResponse = await fetch(`${baseUrl}/js/products.js`);
+    const catalogSource = await catalogResponse.text();
+    const productStart = catalogSource.indexOf(`"${chatgpt.slug}"`);
+    const nextProduct = catalogSource.indexOf("\n  },", productStart);
+    const productSource = catalogSource.slice(productStart, nextProduct);
+
+    assert.ok(productStart >= 0);
+    assert.match(productSource, /"deal":\s*\{\s*"enabled": false\s*\}/);
+});
+
 test("order response hides internal prices and integration data", async () => {
     const created = await api("/api/orders", {
         method: "POST",

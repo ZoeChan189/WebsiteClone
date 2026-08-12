@@ -68,6 +68,24 @@
                 <label><input id="productRequiresCustomerEmail" type="checkbox"> Cần email khách</label>
                 <label>Trạng thái<select id="productStatus"><option value="active">active</option><option value="draft">draft</option></select></label>
                 <label class="full">Mô tả<textarea id="productDescription" rows="3"></textarea></label>
+                <fieldset class="admin-editor-group full">
+                    <legend>Sale theo thời gian</legend>
+                    <div class="sale-editor-grid">
+                        <label class="check-label"><input id="productSaleEnabled" type="checkbox"> Hiển thị khung sale</label>
+                        <label>Kết thúc lúc<input id="productSaleEndsAt" type="datetime-local"></label>
+                        <label>Đã bán (%)<input id="productSaleSoldPercent" type="number" min="0" max="100" step="1"></label>
+                        <label>Còn lại<input id="productSaleRemaining" type="number" min="0" step="1"></label>
+                    </div>
+                    <p class="field-help">Khung sale tự biến mất ngay khi hết thời gian.</p>
+                </fieldset>
+                <fieldset class="admin-editor-group full">
+                    <div class="editor-group-head">
+                        <legend>Loại gói và thời hạn</legend>
+                        <button id="addVariantButton" class="secondary-action" type="button">Thêm loại gói</button>
+                    </div>
+                    <div id="variantEditor"></div>
+                    <p class="field-help">Mỗi loại gói có thể là dùng chung, dùng riêng hoặc loại khác; mỗi thời hạn có giá và trạng thái bán riêng.</p>
+                </fieldset>
                 <div class="product-preview full"><span>Preview</span><img id="productImagePreview" alt=""><img id="productIconPreview" alt=""></div>
                 <div class="form-actions">
                     <button type="submit">Lưu sản phẩm</button>
@@ -120,6 +138,6 @@
     </main>
 
     <div class="toast" id="toast"></div>
-    <script src="js/admin.js?v=6"></script>
+    <script src="js/admin.js?v=7"></script>
 </body>
 </html>
